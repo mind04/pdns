@@ -498,7 +498,6 @@ void GSQLBackend::getCatalog(const DomainInfo& di, vector<DNSZoneRecord>& dzrs, 
     throw PDNSException("GSQLBackend::getCatalog() Unable to retrieve catalog for account: '"+di.account+"' : "+e.txtReason());
   }
 
-  // FIXME: move logic to dnsbackend
   try {
     DNSZoneRecord dzr;
     dzr.domain_id = di.id;
@@ -517,32 +516,6 @@ void GSQLBackend::getCatalog(const DomainInfo& di, vector<DNSZoneRecord>& dzrs, 
       dzr.dr.d_type = QType::PTR;
       dzr.dr.d_content =  std::make_shared<PTRRecordContent>(d_result[n][0]);
       dzrs.push_back(dzr);
-
-/*      vector<string> masters;
-      stringtok(masters, d_result[n][1], " ,\t");
-      if (!masters.empty()) {
-        dzr.dr.d_type = QType::TXT;
-
-        DNSName property = DNSName("pdns-primaries") + uniq;
-        uint32_t sequence = 0;
-        try {
-          for(auto& master : masters) {
-            if (masters.size() == 1 ) {
-              dzr.dr.d_name = property;
-            }
-            else {
-              dzr.dr.d_name = DNSName((boost::format("%08x") % sequence++).str()) + property;
-            }
-            dzr.dr.d_content =  std::make_shared<TXTRecordContent>('"' + ComboAddress(master, 53).toStringWithPortExcept(53) + '"');
-            dzrs.push_back(dzr);
-          }
-        } catch(const PDNSException &e) {
-          g_log<<Logger::Error<<"GSQLBackend::getCatalog() Could not parse masters ("<<d_result[n][1]<<") for zone '"<<di.zone<<"' : "<<e.reason<<endl;
-          dzrs.clear();
-          return;
-        }
-      }
-*/
     }
   } catch ( ... ) {
     g_log<<Logger::Error<<"GSQLBackend::getCatalog() Someting went wrong for zone '"<<di.zone<<"'"<<endl;

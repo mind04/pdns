@@ -315,21 +315,6 @@ bool DNSBackend::getCatalogZone(const DNSName& zone, vector<DNSZoneRecord>& dzrs
     dzr.auth = true;
     dzrs.push_back(dzr);
 
-/*    if (!di.masters.empty()) {
-      DNSName property = DNSName("pdns-primaries.defaults") + zone;
-      uint32_t sequence = 0;
-      for (const auto& master : di.masters) {
-        if (di.masters.size() == 1 ) {
-          dzr.dr.d_name = property;
-        } 
-        else {
-          dzr.dr.d_name = DNSName((boost::format("%08x") % sequence++).str()) + property;
-        }
-        dzr.dr.d_content =  std::make_shared<TXTRecordContent>('"' + master.toStringWithPortExcept(53) + '"');
-        dzrs.push_back(dzr);
-      }
-    }
-*/
     this->getCatalog(di, dzrs);
 
     return ! dzrs.empty();
