@@ -3,13 +3,14 @@ CREATE TABLE domains (
   name                  VARCHAR(255) NOT NULL,
   master                VARCHAR(128) DEFAULT NULL,
   last_check            INT DEFAULT NULL,
-  type                  VARCHAR(6) NOT NULL,
+  type                  VARCHAR(17) NOT NULL,
   notified_serial       BIGINT DEFAULT NULL,
-  account               VARCHAR(40) DEFAULT NULL,
+  account               VARCHAR(63) DEFAULT NULL,
   CONSTRAINT c_lowercase_name CHECK (((name)::TEXT = LOWER((name)::TEXT)))
 );
 
 CREATE UNIQUE INDEX name_index ON domains(name);
+CREATE INDEX typeaccount_index ON domains(type,account);
 
 
 CREATE TABLE records (
@@ -38,7 +39,7 @@ CREATE INDEX recordorder ON records (domain_id, ordername text_pattern_ops);
 CREATE TABLE supermasters (
   ip                    INET NOT NULL,
   nameserver            VARCHAR(255) NOT NULL,
-  account               VARCHAR(40) NOT NULL,
+  account               VARCHAR(63) NOT NULL,
   PRIMARY KEY(ip, nameserver)
 );
 

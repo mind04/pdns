@@ -5,12 +5,13 @@ CREATE TABLE domains (
   name                  VARCHAR(255) NOT NULL COLLATE NOCASE,
   master                VARCHAR(128) DEFAULT NULL,
   last_check            INTEGER DEFAULT NULL,
-  type                  VARCHAR(6) NOT NULL,
+  type                  VARCHAR(17) NOT NULL,
   notified_serial       INTEGER DEFAULT NULL,
-  account               VARCHAR(40) DEFAULT NULL
+  account               VARCHAR(63) DEFAULT NULL
 );
 
 CREATE UNIQUE INDEX name_index ON domains(name);
+CREATE INDEX typeaccount_index ON domains(type,account);
 
 
 CREATE TABLE records (
@@ -35,7 +36,7 @@ CREATE INDEX records_order_idx ON records(domain_id, ordername);
 CREATE TABLE supermasters (
   ip                    VARCHAR(64) NOT NULL,
   nameserver            VARCHAR(255) NOT NULL COLLATE NOCASE,
-  account               VARCHAR(40) NOT NULL
+  account               VARCHAR(63) NOT NULL
 );
 
 CREATE UNIQUE INDEX ip_nameserver_pk ON supermasters(ip, nameserver);

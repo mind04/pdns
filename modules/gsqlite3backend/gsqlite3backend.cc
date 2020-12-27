@@ -96,7 +96,7 @@ public:
 
     declare(suffix, "info-zone-query", "", "select id,name,master,last_check,notified_serial,type,account from domains where name=:domain");
 
-    declare(suffix, "info-all-slaves-query", "", "select id,name,master,last_check from domains where type='SLAVE'");
+    declare(suffix, "info-all-slaves-query", "","select id,name,master,last_check from domains where type='SLAVE' or type='CATALOG-SLAVE'");
     declare(suffix, "supermaster-query", "", "select account from supermasters where ip=:ip and nameserver=:nameserver");
     declare(suffix, "supermaster-name-to-ips", "", "select ip,account from supermasters where nameserver=:nameserver and account=:account");
     declare(suffix, "supermaster-add", "", "insert into supermasters (ip, nameserver, account) values (:ip,:nameserver,:account)");
