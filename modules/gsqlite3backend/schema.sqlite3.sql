@@ -7,7 +7,7 @@ CREATE TABLE domains (
   last_check            INTEGER DEFAULT NULL,
   type                  VARCHAR(17) NOT NULL,
   notified_serial       INTEGER DEFAULT NULL,
-  account               VARCHAR(63) DEFAULT NULL
+  account               VARCHAR(63) DEFAULT ''
 );
 
 CREATE UNIQUE INDEX name_index ON domains(name);

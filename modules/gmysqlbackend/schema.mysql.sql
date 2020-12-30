@@ -5,7 +5,7 @@ CREATE TABLE domains (
   last_check            INT DEFAULT NULL,
   type                  VARCHAR(17) NOT NULL,
   notified_serial       INT UNSIGNED DEFAULT NULL,
-  account               VARCHAR(63) CHARACTER SET 'utf8' DEFAULT NULL,
+  account               VARCHAR(63) CHARACTER SET 'utf8' DEFAULT '',
   PRIMARY KEY (id)
 ) Engine=InnoDB CHARACTER SET 'latin1';
 
