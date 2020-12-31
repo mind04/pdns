@@ -370,8 +370,9 @@ BOOST_AUTO_TEST_CASE(test_method_getUpdatedMasters)
   DomainInfo di;
   BOOST_TEST_MESSAGE("Testing getUpdatedMasters method");
   vector<DomainInfo> result;
+   map<string, pdns_SHA256> catalogHashes;
 
-  be->getUpdatedMasters(&result);
+   be->getUpdatedMasters(&result, catalogHashes);
 
   BOOST_CHECK(result.size() > 0);
 

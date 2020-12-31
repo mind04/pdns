@@ -30,20 +30,18 @@ __EOF__
 	do
 		zones=$((zones+1))
 		if [ "$zone" = "test.com" ]; then
-			mysql --user="$GMYSQL2USER" --password="$GMYSQL2PASSWD" --host="$GMYSQL2HOST" \
-				"$GMYSQL2DB" -e "INSERT INTO domains (name, type, master, account) VALUES('$zone','SLAVE','127.0.0.1:$port', 'bar')"
+			$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone $zone 127.0.0.1:$port
+			$PDNSUTIL --config-dir=. --config-name=gmysql2 set-account $zone bar
 			$PDNSUTIL --config-dir=. --config-name=gmysql2 set-meta $zone CATALOG-UNIQ ''
 		fi
 		if [ "$zone" = "tsig.com" ]; then
-			mysql --user="$GMYSQL2USER" --password="$GMYSQL2PASSWD" --host="$GMYSQL2HOST" \
-				"$GMYSQL2DB" -e "INSERT INTO domains (name, type, master) VALUES('$zone','SLAVE','127.0.0.1:$port')"
+			$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone $zone 127.0.0.1:$port
 			$PDNSUTIL --config-dir=. --config-name=gmysql2 import-tsig-key test $ALGORITHM $KEY
 			$PDNSUTIL --config-dir=. --config-name=gmysql2 activate-tsig-key tsig.com test slave
 		fi
 		if [ "$zone" = "stest.com" ]; then
 			if [[ $skipreasons != *nolua* ]]; then
-				mysql --user="$GMYSQL2USER" --password="$GMYSQL2PASSWD" --host="$GMYSQL2HOST" \
-					"$GMYSQL2DB" -e "INSERT INTO domains (name, type, master) VALUES('$zone','SLAVE','127.0.0.1:$port')"
+				$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone $zone 127.0.0.1:$port
 				$PDNSUTIL --config-dir=. --config-name=gmysql2 set-meta stest.com AXFR-SOURCE 127.0.0.2
 			fi
 		fi
@@ -52,9 +50,10 @@ __EOF__
 	zones=$((zones+1))
 	$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone catalog.invalid 127.0.0.1:$port
 	$PDNSUTIL --config-dir=. --config-name=gmysql2 set-kind catalog.invalid catalog-slave
-	mysql --user="$GMYSQL2USER" --password="$GMYSQL2PASSWD" --host="$GMYSQL2HOST" "$GMYSQL2DB" -e "update domains set account = 'bar' where name='catalog.invalid'"
+	$PDNSUTIL --config-dir=. --config-name=gmysql2 set-account catalog.invalid bar
 
 	$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone remove.invalid 127.0.0.1:$port
+	$PDNSUTIL --config-dir=. --config-name=gmysql2 set-account remove.invalid bar
 
 	port=$((port+100))
 
@@ -69,7 +68,7 @@ __EOF__
 	do
 		sleep 5
 		present=$(mysql --user="$GMYSQL2USER" --password="$GMYSQL2PASSWD" --host="$GMYSQL2HOST" \
-			"$GMYSQL2DB" -ss -e "SELECT COUNT(id) FROM records WHERE type='SOA'")
+			"$GMYSQL2DB" -ss -e "SELECT COUNT(DISTINCT(name)) FROM records WHERE type='SOA'")
 		if [ $present -eq $zones ]
 		then
 			break

@@ -423,6 +423,7 @@ static bool catalogUpdate(const DomainInfo& di, vector<DNSResourceRecord>& rrs, 
 
   CatalogInfo ci;
   ci.primaries = di.masters;
+  ci.account = di.account;
 
   vector<DNSResourceRecord> ret;
 
