@@ -40,20 +40,27 @@ __EOF__
 			$PDNSUTIL --config-dir=. --config-name=gmysql2 activate-tsig-key tsig.com test slave
 		fi
 		if [ "$zone" = "stest.com" ]; then
+			$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone $zone 127.0.0.1:$port
 			if [[ $skipreasons != *nolua* ]]; then
-				$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone $zone 127.0.0.1:$port
 				$PDNSUTIL --config-dir=. --config-name=gmysql2 set-meta stest.com AXFR-SOURCE 127.0.0.2
 			fi
 		fi
+		if [ "$zone" = "." ]; then
+			$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone $zone 127.0.0.1:$port
+		fi
 	done
 
-	zones=$((zones+1))
-	$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone catalog.invalid 127.0.0.1:$port
-	$PDNSUTIL --config-dir=. --config-name=gmysql2 set-kind catalog.invalid catalog-slave
-	$PDNSUTIL --config-dir=. --config-name=gmysql2 set-account catalog.invalid bar
+	# setup catalog zone
+	if [ $zones -ne 1 ] # detect root tests
+	then
+		zones=$((zones+1))
+		$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone catalog.invalid 127.0.0.1:$port
+		$PDNSUTIL --config-dir=. --config-name=gmysql2 set-kind catalog.invalid catalog-slave
+		$PDNSUTIL --config-dir=. --config-name=gmysql2 set-account catalog.invalid bar
 
-	$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone remove.invalid 127.0.0.1:$port
-	$PDNSUTIL --config-dir=. --config-name=gmysql2 set-account remove.invalid bar
+		$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone remove.invalid 127.0.0.1:$port
+		$PDNSUTIL --config-dir=. --config-name=gmysql2 set-account remove.invalid bar
+	fi
 
 	port=$((port+100))
 

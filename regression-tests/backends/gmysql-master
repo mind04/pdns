@@ -27,14 +27,19 @@ gmysql-password=$GMYSQLPASSWD
 any-to-tcp=no
 __EOF__
 
-
 		# setup catalog zone
-		mysql --user="$GMYSQLUSER" --password="$GMYSQLPASSWD" --host="$GMYSQLHOST" "$GMYSQLDB" -e "update domains set type = 'MASTER'"
+		root=$(mysql --user="$GMYSQLUSER" --password="$GMYSQLPASSWD" --host="$GMYSQLHOST" \
+			"$GMYSQLDB" -ss -e "SELECT COUNT(id) FROM records WHERE type='SOA' and name='.'")
 
-		$PDNSUTIL --config-dir=. --config-name=gmysql load-zone catalog.invalid zones/catalog.invalid
-		$PDNSUTIL --config-dir=. --config-name=gmysql set-kind catalog.invalid catalog-master
+		if [ $root -ne 1 ] # detect root tests
+		then
+			mysql --user="$GMYSQLUSER" --password="$GMYSQLPASSWD" --host="$GMYSQLHOST" "$GMYSQLDB" -e "update domains set type = 'MASTER'"
 
-		mysql --user="$GMYSQLUSER" --password="$GMYSQLPASSWD" --host="$GMYSQLHOST" "$GMYSQLDB" -e "update domains set account = 'foo'"
+			$PDNSUTIL --config-dir=. --config-name=gmysql load-zone catalog.invalid zones/catalog.invalid
+			$PDNSUTIL --config-dir=. --config-name=gmysql set-kind catalog.invalid catalog-master
+
+			mysql --user="$GMYSQLUSER" --password="$GMYSQLPASSWD" --host="$GMYSQLHOST" "$GMYSQLDB" -e "update domains set account = 'foo'"
+		fi
 
 		gsql_master gmysql dyndns
 		;;
