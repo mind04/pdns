@@ -295,7 +295,7 @@ static vector<DNSResourceRecord> doAxfr(const ComboAddress& raddr, const DNSName
   return rrs;
 }   
 
-static bool catalogDiff(const DomainInfo& di, set<CatalogInfo>& fromXFR, set<CatalogInfo>& fromDB, const string& logPrefix)
+static bool catalogDiff(const DomainInfo& di, const set<CatalogInfo>& fromXFR, const set<CatalogInfo>& fromDB, const string& logPrefix)
 {
   extern CommunicatorClass Communicator;
 
@@ -409,9 +409,6 @@ static bool catalogDiff(const DomainInfo& di, set<CatalogInfo>& fromXFR, set<Cat
 
 static bool catalogUpdate(const DomainInfo& di, vector<DNSResourceRecord>& rrs, string logPrefix)
 {
-  //auto lexical_compare = [](int a, int b) { return (a.qname == b.qname ? a.qtype < b.qtype : a.qname.canonCompare(b.qname); };
-  //sort(rrs.begin(), rrs.end(), decltype(cmp)> s(cmp));
-
   logPrefix += "Catalog-Zone ";
 
   set<CatalogInfo> fromXFR, fromDB;
@@ -453,7 +450,7 @@ static bool catalogUpdate(const DomainInfo& di, vector<DNSResourceRecord>& rrs, 
   }
 
   if (hasSOA && hasNS && suportedSchema) {
-    g_log<<Logger::Info<<logPrefix<<"zone and catalog zone schema version valid"<<endl;
+    g_log<<Logger::Info<<logPrefix<<"zone and catalog zone schema version are valid"<<endl;
   }
   else {
     g_log<<Logger::Warning<<logPrefix<<"zone not valid or catalog zone schema version not supported, skip updates"<<endl;
@@ -531,7 +528,7 @@ void CommunicatorClass::suck(const DNSName &domain, const ComboAddress& remote, 
         script=scripts[0];
       }
     }
-    if(!script.empty() && ! di.isCatalogType()){
+    if(!script.empty() && !di.isCatalogType()){
       try {
         pdl = make_unique<AuthLua4>();
         pdl->loadFile(script);
@@ -624,8 +621,8 @@ void CommunicatorClass::suck(const DNSName &domain, const ComboAddress& remote, 
     }
 
     if(di.isCatalogType()) {
-      if (! catalogUpdate(di, rrs, logPrefix)) {
-        g_log<<Logger::Notice<<logPrefix<<"catalog: update failed, only import records"<<endl;
+      if (!catalogUpdate(di, rrs, logPrefix)) {
+        g_log<<Logger::Warning<<logPrefix<<"Catalog-Zone update failed, only import records"<<endl;
       }
     }
 

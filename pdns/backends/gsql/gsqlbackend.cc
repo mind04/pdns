@@ -489,7 +489,7 @@ void GSQLBackend::getUpdatedMasters(vector<DomainInfo> *updatedDomains, map<stri
   }
 }
 
-void GSQLBackend::getUpdatedCatalogs(vector<DomainInfo>& updatedDomains, map<string, pdns_SHA256>& catalogHashes)
+void GSQLBackend::getUpdatedCatalogs(vector<DomainInfo>& updatedDomains, const map<string, pdns_SHA256>& catalogHashes)
 {
   try {
     reconnectIfNeeded();
@@ -540,7 +540,6 @@ void GSQLBackend::getUpdatedCatalogs(vector<DomainInfo>& updatedDomains, map<str
         tmp.push_back(hash);
         setDomainMetadata(rr.qname, "CATALOG-HASH", tmp);
 
-
         increaseSOARecord(rr, "EPOCH", "");
 
         rrs.clear();
@@ -549,7 +548,7 @@ void GSQLBackend::getUpdatedCatalogs(vector<DomainInfo>& updatedDomains, map<str
 
         commitTransaction();
 
-        g_log<<Logger::Error<<"GSQLBackend::getUpdatedCatalogs() catalog zone '"<<d_result[n][1]<<"' was updated"<<endl;
+        g_log<<Logger::Warning<<"catalog zone content '"<<d_result[n][1]<<"' was updated"<<endl;
       }
       catch(SSqlException &e) {
         try {
@@ -574,7 +573,7 @@ void GSQLBackend::getUpdatedCatalogs(vector<DomainInfo>& updatedDomains, map<str
     catch (PDNSException &ex) {
     }
     catch (...) {
-      g_log<<Logger::Error<<"GSQLBackend::getUpdatedCatalogs() Someting went wrong for catalog zone '"<<d_result[n][1]<<"', skipping"<<endl;
+      g_log<<Logger::Warning<<"GSQLBackend::getUpdatedCatalogs() someting went wrong for catalog zone '"<<d_result[n][1]<<"', skipping"<<endl;
       continue;
     }
   }
@@ -592,7 +591,7 @@ bool GSQLBackend::getCatalogPrimary(const DomainInfo& di, vector<DomainInfo>& zo
       reset();
   }
   catch(SSqlException &e) {
-    throw PDNSException("GSQLBackend::getCatalogPrimary() Unable to retrieve catalog for account: '"+di.account+"' : "+e.txtReason());
+    throw PDNSException("GSQLBackend::getCatalogPrimary() unable to retrieve catalog for account: '"+di.account+"' : "+e.txtReason());
   }
 
   size_t n;
@@ -615,7 +614,7 @@ bool GSQLBackend::getCatalogPrimary(const DomainInfo& di, vector<DomainInfo>& zo
     return true;
   }
   catch ( ... ) {
-    g_log<<Logger::Error<<"GSQLBackend::getCatalogPrimary() Someting went wrong for zone '"<<d_result[n][1]<<"'"<<endl;
+    g_log<<Logger::Warning<<"GSQLBackend::getCatalogPrimary() someting went wrong for zone '"<<d_result[n][1]<<"'"<<endl;
     return false;
   }
 }
@@ -632,7 +631,7 @@ bool GSQLBackend::getCatalogSecondary(const string& account, set<CatalogInfo>& z
       reset();
   }
   catch(SSqlException &e) {
-    throw PDNSException("GSQLBackend::getCatalogSecondary() Unable to retrieve catalog for account: '"+account+"' : "+e.txtReason());
+    throw PDNSException("GSQLBackend::getCatalogSecondary() unable to retrieve catalog for account: '"+account+"' : "+e.txtReason());
   }
 
   size_t n;
@@ -661,7 +660,7 @@ bool GSQLBackend::getCatalogSecondary(const string& account, set<CatalogInfo>& z
     return true;
   }
   catch ( ... ) {
-    g_log<<Logger::Error<<"GSQLBackend::getCatalogSecondary() Someting went wrong for zone '"<<d_result[n][1]<<"'"<<endl;
+    g_log<<Logger::Warning<<"GSQLBackend::getCatalogSecondary() someting went wrong for zone '"<<d_result[n][1]<<"'"<<endl;
     return false;
   }
 }

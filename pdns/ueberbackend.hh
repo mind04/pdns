@@ -108,7 +108,7 @@ public:
 
   void getUnfreshSlaveInfos(vector<DomainInfo>* domains);
   void getUpdatedMasters(vector<DomainInfo>* domains, map<string, pdns_SHA256>& catalogHashes);
-  void getUpdatedCatalogs(vector<DomainInfo>& domains, map<string, pdns_SHA256>& catalogHashes);
+  void getUpdatedCatalogs(vector<DomainInfo>& domains, const map<string, pdns_SHA256>& catalogHashes);
   bool getDomainInfo(const DNSName &domain, DomainInfo &di, bool getSerial=true);
   bool createDomain(const DNSName &domain, const DomainInfo::DomainKind kind, const vector<ComboAddress> &masters, const string &account);
   

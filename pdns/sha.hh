@@ -81,7 +81,7 @@ public:
       throw std::runtime_error(std::string(EVP_MD_name(md)) + " EVP digest update failed");
     }
   }
-  std::string hash() {
+  std::string hash() const {
     unsigned char md_value[EVP_MAX_MD_SIZE];
     unsigned int md_len;
 #if defined(HAVE_EVP_MD_CTX_NEW) && defined(HAVE_EVP_MD_CTX_FREE)

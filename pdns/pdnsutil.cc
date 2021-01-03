@@ -2272,7 +2272,7 @@ try
     cout<<"list-algorithms [with-backend]     List all DNSSEC algorithms supported, optionally also listing the crypto library used"<<endl;
     cout<<"list-keys [ZONE]                   List DNSSEC keys for ZONE. When ZONE is unset or \"all\", display all keys for all zones"<<endl;
     cout<<"list-zone ZONE                     List zone contents"<<endl;
-    cout<<"list-all-zones [master|slave|native|catalogmaster|catalogslave]"<<endl;
+    cout<<"list-all-zones [master|slave|native|catalog-master|catalog-slave]"<<endl;
     cout<<"                                   List all zone names"<<endl;;
     cout<<"list-tsig-keys                     List all TSIG keys"<<endl;
     cout<<"publish-zone-key ZONE KEY-ID       Publish the zone key with key id KEY-ID in ZONE"<<endl;
@@ -2283,7 +2283,7 @@ try
     cout<<"       content [content..]"<<endl;
     cout<<"secure-all-zones [increase-serial] Secure all zones without keys"<<endl;
     cout<<"secure-zone ZONE [ZONE ..]         Add DNSSEC to zone ZONE"<<endl;
-    cout<<"set-kind ZONE KIND                 Change the kind of ZONE to KIND (master, slave, native, catalogmaster, catalogslave)"<<endl;
+    cout<<"set-kind ZONE KIND                 Change the kind of ZONE to KIND (master, slave, native, catalog-master, catalog-slave)"<<endl;
     cout<<"set-account ZONE ACCOUNT           Change the account (owner) of ZONE to ACCOUNT"<<endl;
     cout<<"set-nsec3 ZONE ['PARAMS' [narrow]] Enable NSEC3 with PARAMS. Optionally narrow"<<endl;
     cout<<"set-presigned ZONE                 Use presigned RRSIGs from storage"<<endl;

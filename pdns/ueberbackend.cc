@@ -304,9 +304,9 @@ void UeberBackend::getUpdatedMasters(vector<DomainInfo>* domains, map<string, pd
   }
 }
 
-void UeberBackend::getUpdatedCatalogs(vector<DomainInfo>& domains, map<string, pdns_SHA256>& catalogHashes)
+void UeberBackend::getUpdatedCatalogs(vector<DomainInfo>& domains, const map<string, pdns_SHA256>& catalogHashes)
 {
-  for(DNSBackend* db :  backends) {
+  for(auto db : backends) {
     db->getUpdatedCatalogs(domains, catalogHashes);
   }
 }
