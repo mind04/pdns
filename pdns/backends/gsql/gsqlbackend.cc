@@ -466,14 +466,14 @@ void GSQLBackend::getUpdatedMasters(vector<DomainInfo> *updatedDomains, map<stri
   for( size_t n = 0; n < numanswers; ++n ) { // id, name, master, notified_serial, account, content
     ASSERT_ROW_COLUMNS( "info-all-master-query", d_result[n], 6 );
 
-    catalogHashes[d_result[n][4]].update(d_result[n][0] + d_result[n][1] + d_result[n][2]);
-
     parts.clear();
     stringtok( parts, d_result[n][5] );
 
     try {
       uint32_t serial = parts.size() > 2 ? pdns_stou(parts[2]) : 0;
       uint32_t notified_serial = pdns_stou( d_result[n][3] );
+
+      catalogHashes[d_result[n][4]].update(d_result[n][0] + d_result[n][1] + d_result[n][2] + std::to_string(serial));
 
       if( serial != notified_serial ) {
         di.id = pdns_stou( d_result[n][0] );
@@ -600,15 +600,18 @@ bool GSQLBackend::getCatalogPrimary(const DomainInfo& di, vector<DomainInfo>& zo
     DomainInfo d;
     size_t numanswers=d_result.size();
 
-    for(n = 0; n < numanswers; ++n) { // id, name, disabled
-      ASSERT_ROW_COLUMNS( "info-catalog-primary-query", d_result[n], 3 );
+    for(n = 0; n < numanswers; ++n) { // id, name, content, disabled
+      ASSERT_ROW_COLUMNS( "info-catalog-primary-query", d_result[n], 4 );
 
-      if (!include_disabled && !d_result[n][2].empty() && d_result[n][2][0]=='1') {
+      if (!include_disabled && !d_result[n][3].empty() && d_result[n][3][0]=='1') {
         continue;
       }
 
+      auto soa = std::make_shared<SOARecordContent>(d_result[n][2]);
+
       d.id = pdns_stou(d_result[n][0]);
       d.zone = DNSName(d_result[n][1]);
+      d.serial = soa->d_st.serial;
       zones.emplace_back(d);
     }
     return true;

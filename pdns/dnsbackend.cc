@@ -326,12 +326,16 @@ bool DNSBackend::getCatalogPrimaryZone(const DNSName& zone, vector<DNSZoneRecord
 
     DNSZoneRecord dzr;
     dzr.domain_id = di.id;
-    dzr.dr.d_type = QType::PTR;
 
     for (const auto& d : zones) {
       dzr.dr.d_name = DNSName(toBase32Hex(hashQNameWithSalt(std::to_string(d.id), 0, d.zone)) + ".zones") + di.zone; // salt with domain id
-      dzr.dr.d_content =  std::make_shared<PTRRecordContent>(d.zone.toString());
+      dzr.dr.d_type = QType::PTR;
+      dzr.dr.d_content = std::make_shared<PTRRecordContent>(d.zone.toString());
+      dzrs.push_back(dzr);
 
+      dzr.dr.d_name = DNSName("serial") + dzr.dr.d_name;
+      dzr.dr.d_type = QType::TXT;
+      dzr.dr.d_content = std::make_shared<TXTRecordContent>(std::to_string(d.serial));
       dzrs.push_back(dzr);
     }
     return true;

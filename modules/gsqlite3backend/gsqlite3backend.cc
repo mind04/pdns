@@ -124,7 +124,7 @@ public:
     declare(suffix, "info-all-master-query", "", "select domains.id, domains.name, domains.master, domains.notified_serial, domains.account,records.content from records join domains on records.name=domains.name where records.type='SOA' and records.disabled=0 and domains.type='MASTER'");
     declare(suffix,"info-all-catalog-query","", "select d.id, d.name, d.master, d.notified_serial, d.account, r.ttl, r.content from domains d join records r on r.name=d.name where r.type='SOA' and r.disabled=0 and d.type='CATALOG-MASTER'");
 
-    declare(suffix, "info-catalog-primary-query","", "select d.id, d.name, r.disabled from records r join domains d on r.name=d.name where r.type='SOA' and d.type='MASTER' and d.account=:account");
+    declare(suffix, "info-catalog-primary-query","", "select d.id, d.name, r.content, r.disabled from records r join domains d on r.name=d.name where r.type='SOA' and d.type='MASTER' and d.account=:account");
     declare(suffix, "info-catalog-secondary-query","", "select id, name, master from domains where type='SLAVE' and account=:account");
 
     declare(suffix, "delete-domain-query", "", "delete from domains where name=:domain");
