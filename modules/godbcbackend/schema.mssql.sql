@@ -3,13 +3,14 @@ CREATE TABLE domains (
   name                  VARCHAR(255) NOT NULL,
   master                VARCHAR(128) DEFAULT NULL,
   last_check            INT DEFAULT NULL,
-  type                  VARCHAR(6) NOT NULL,
+  type                  VARCHAR(17) NOT NULL,
   notified_serial       INT DEFAULT NULL,
-  account               VARCHAR(40) DEFAULT NULL,
+  account               VARCHAR(63) DEFAULT '',
   PRIMARY KEY (id)
 );
 
 CREATE UNIQUE INDEX name_index ON domains(name);
+CREATE INDEX type_account ON domains(type, account);
 
 CREATE TABLE records (
   id                    INT IDENTITY,
@@ -33,7 +34,7 @@ CREATE INDEX recordorder ON records (domain_id, ordername);
 CREATE TABLE supermasters (
   ip                    VARCHAR(64) NOT NULL,
   nameserver            VARCHAR(255) NOT NULL,
-  account               VARCHAR(40) NOT NULL,
+  account               VARCHAR(63) NOT NULL,
   PRIMARY KEY (ip, nameserver)
 );
 
