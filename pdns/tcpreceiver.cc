@@ -499,7 +499,7 @@ int TCPNameserver::doAXFR(const DNSName &target, std::unique_ptr<DNSPacket>& q, 
   g_log<<Logger::Warning<<logPrefix<<"transfer initiated"<<endl;
 
   // determine if zone exists and AXFR is allowed using existing backend before spawning a new backend.
-  SOAData sd;
+  DomainInfo di;
   {
     std::lock_guard<std::mutex> l(s_plock);
     DLOG(g_log<<logPrefix<<"looking for SOA"<<endl);    // find domain_id via SOA and list complete domain. No SOA, no AXFR
@@ -516,7 +516,7 @@ int TCPNameserver::doAXFR(const DNSName &target, std::unique_ptr<DNSPacket>& q, 
       return 0;
     }
 
-    if(!s_P->getBackend()->getSOAUncached(target, sd)) {
+    if(!s_P->getBackend()->getDomainInfo(target, di, false)) {
       g_log<<Logger::Warning<<logPrefix<<"failed: not authoritative"<<endl;
       outpacket->setRcode(RCode::NotAuth);
       sendPacket(outpacket,outsock);
@@ -525,6 +525,7 @@ int TCPNameserver::doAXFR(const DNSName &target, std::unique_ptr<DNSPacket>& q, 
   }
 
   UeberBackend db;
+  SOAData sd;
   if(!db.getSOAUncached(target, sd)) {
     g_log<<Logger::Warning<<logPrefix<<"failed: not authoritative in second instance"<<endl;
     outpacket->setRcode(RCode::NotAuth);
@@ -532,14 +533,21 @@ int TCPNameserver::doAXFR(const DNSName &target, std::unique_ptr<DNSPacket>& q, 
     return 0;
   }
 
-  DNSSECKeeper dk(&db);
-  DNSSECKeeper::clearCaches(target);
-  bool securedZone = dk.isSecuredZone(target);
-  bool presignedZone = dk.isPresigned(target);
+  bool securedZone = false;
+  bool presignedZone = false;
+  bool NSEC3Zone = false;
+  bool narrow = false;
 
   NSEC3PARAMRecordContent ns3pr;
-  bool narrow;
-  bool NSEC3Zone=false;
+
+  DNSSECKeeper dk(&db);
+  DNSSECKeeper::clearCaches(target);
+
+  if (!di.isCatalogType()) {
+    securedZone = dk.isSecuredZone(target);
+    presignedZone = dk.isPresigned(target);
+  }
+
   if(securedZone && dk.getNSEC3PARAM(target, &ns3pr, &narrow)) {
     NSEC3Zone=true;
     if(narrow) {
@@ -664,17 +672,29 @@ int TCPNameserver::doAXFR(const DNSName &target, std::unique_ptr<DNSPacket>& q, 
     zrrs.push_back(zrr);
   }
   
+  const bool rectify = !(presignedZone || ::arg().mustDo("disable-axfr-rectify"));
+  set<DNSName> qnames, nsset, terms;
+
+  if (di.kind == DomainInfo::CatalogMaster) {
+    sd.db->getCatalogZone(target, zrrs);
+    if (!zrrs.empty()) {
+      goto send;
+    }
+    else {
+      g_log<<Logger::Error<<logPrefix<<"catalog zone is empty, aborting AXFR"<<endl;
+      outpacket->setRcode(RCode::ServFail);
+      sendPacket(outpacket,outsock);
+      return 0;
+    }
+  }
+
   // now start list zone
-  if(!(sd.db->list(target, sd.domain_id))) {  
+  if(!(sd.db->list(target, sd.domain_id, di.isCatalogType()))) {
     g_log<<Logger::Error<<logPrefix<<"backend signals error condition, aborting AXFR"<<endl;
     outpacket->setRcode(RCode::ServFail);
     sendPacket(outpacket,outsock);
     return 0;
   }
-
-
-  const bool rectify = !(presignedZone || ::arg().mustDo("disable-axfr-rectify"));
-  set<DNSName> qnames, nsset, terms;
 
   while(sd.db->get(zrr)) {
     if (!presignedZone) {
@@ -801,6 +821,7 @@ int TCPNameserver::doAXFR(const DNSName &target, std::unique_ptr<DNSPacket>& q, 
     }
   }
 
+send:
 
   /* now write all other records */
 

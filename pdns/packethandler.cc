@@ -992,7 +992,7 @@ int PacketHandler::processNotify(const DNSPacket& p)
     }
     g_log<<Logger::Notice<<"Received NOTIFY for "<<p.qdomain<<" from trusted-notification-proxy "<<p.getRemote()<<endl;
   }
-  else if(::arg().mustDo("master") && di.kind == DomainInfo::Master) {
+  else if(::arg().mustDo("master") && di.isMasterType()) {
     g_log<<Logger::Warning<<"Received NOTIFY for "<<p.qdomain<<" from "<<p.getRemote()<<" but we are master (Refused)"<<endl;
     return RCode::Refused;
   }

@@ -251,7 +251,7 @@ static int checkZone(DNSSECKeeper &dk, UeberBackend &B, const DNSName& zone, con
       return 1;
     }
   } catch(const PDNSException &e) {
-    if (di.kind == DomainInfo::Slave) {
+    if (di.isSlaveType()) {
       cout<<"[Error] non-IP address for masters: "<<e.reason<<endl;
       numerrors++;
     }
@@ -1540,13 +1540,17 @@ static int listAllZones(const string &type="") {
   int kindFilter = -1;
   if (type.size()) {
     if (toUpper(type) == "MASTER")
-      kindFilter = 0;
+      kindFilter = DomainInfo::Master;
     else if (toUpper(type) == "SLAVE")
-      kindFilter = 1;
+      kindFilter = DomainInfo::Slave;
     else if (toUpper(type) == "NATIVE")
-      kindFilter = 2;
+      kindFilter = DomainInfo::Native;
+    else if (toUpper(type) == "CATALOG-MASTER")
+      kindFilter = DomainInfo::CatalogMaster;
+    else if (toUpper(type) == "CATALOG-SLAVE")
+      kindFilter = DomainInfo::CatalogSlave;
     else {
-      cerr<<"Syntax: pdnsutil list-all-zones [master|slave|native]"<<endl;
+      cerr<<"Syntax: pdnsutil list-all-zones [master|slave|native|catalog-master|catalog-slave]"<<endl;
       return 1;
     }
   }
@@ -1734,7 +1738,7 @@ static bool showZone(DNSSECKeeper& dk, const DNSName& zone, bool exportDS = fals
   }
   if (!exportDS) {
     cout<<"This is a "<<DomainInfo::getKindString(di.kind)<<" zone"<<endl;
-    if(di.kind == DomainInfo::Master) {
+    if(di.isMasterType()) {
       cout<<"Last SOA serial number we notified: "<<di.notified_serial<<" ";
       SOAData sd;
       if(B.getSOAUncached(zone, sd)) {
@@ -1745,7 +1749,7 @@ static bool showZone(DNSSECKeeper& dk, const DNSName& zone, bool exportDS = fals
         cout<<sd.serial<<" (serial in the database)"<<endl;
       }
     }
-    else if(di.kind == DomainInfo::Slave) {
+    else if(di.isSlaveType()) {
       cout<<"Master"<<addS(di.masters)<<": ";
       for(const auto& m : di.masters)
         cout<<m.toStringWithPort()<<" ";
@@ -1966,7 +1970,7 @@ static bool secureZone(DNSSECKeeper& dk, const DNSName& zone)
     return false;
   }
 
-  if(di.kind == DomainInfo::Slave)
+  if(di.isSlaveType())
   {
     cerr<<"Warning! This is a slave domain! If this was a mistake, please run"<<endl;
     cerr<<"pdnsutil disable-dnssec "<<zone<<" right now!"<<endl;
@@ -2268,7 +2272,7 @@ try
     cout<<"list-algorithms [with-backend]     List all DNSSEC algorithms supported, optionally also listing the crypto library used"<<endl;
     cout<<"list-keys [ZONE]                   List DNSSEC keys for ZONE. When ZONE is unset or \"all\", display all keys for all zones"<<endl;
     cout<<"list-zone ZONE                     List zone contents"<<endl;
-    cout<<"list-all-zones [master|slave|native]"<<endl;
+    cout<<"list-all-zones [master|slave|native|catalogmaster|catalogslave]"<<endl;
     cout<<"                                   List all zone names"<<endl;;
     cout<<"list-tsig-keys                     List all TSIG keys"<<endl;
     cout<<"publish-zone-key ZONE KEY-ID       Publish the zone key with key id KEY-ID in ZONE"<<endl;
@@ -2279,7 +2283,7 @@ try
     cout<<"       content [content..]"<<endl;
     cout<<"secure-all-zones [increase-serial] Secure all zones without keys"<<endl;
     cout<<"secure-zone ZONE [ZONE ..]         Add DNSSEC to zone ZONE"<<endl;
-    cout<<"set-kind ZONE KIND                 Change the kind of ZONE to KIND (master, slave, native)"<<endl;
+    cout<<"set-kind ZONE KIND                 Change the kind of ZONE to KIND (master, slave, native, catalogmaster, catalogslave)"<<endl;
     cout<<"set-account ZONE ACCOUNT           Change the account (owner) of ZONE to ACCOUNT"<<endl;
     cout<<"set-nsec3 ZONE ['PARAMS' [narrow]] Enable NSEC3 with PARAMS. Optionally narrow"<<endl;
     cout<<"set-presigned ZONE                 Use presigned RRSIGs from storage"<<endl;
@@ -2427,7 +2431,7 @@ try
   }
   else if (cmds[0] == "list-all-zones") {
     if (cmds.size() > 2) {
-      cerr << "Syntax: pdnsutil list-all-zones [master|slave|native]"<<endl;
+      cerr << "Syntax: pdnsutil list-all-zones [master|slave|native|catalog-master|catalog-slave]"<<endl;
       return 0;
     }
     if (cmds.size() == 2)

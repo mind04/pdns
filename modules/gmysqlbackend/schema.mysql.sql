@@ -3,13 +3,14 @@ CREATE TABLE domains (
   name                  VARCHAR(255) NOT NULL,
   master                VARCHAR(128) DEFAULT NULL,
   last_check            INT DEFAULT NULL,
-  type                  VARCHAR(6) NOT NULL,
+  type                  VARCHAR(17) NOT NULL,
   notified_serial       INT UNSIGNED DEFAULT NULL,
-  account               VARCHAR(40) CHARACTER SET 'utf8' DEFAULT NULL,
+  account               VARCHAR(63) CHARACTER SET 'utf8' DEFAULT NULL,
   PRIMARY KEY (id)
 ) Engine=InnoDB CHARACTER SET 'latin1';
 
 CREATE UNIQUE INDEX name_index ON domains(name);
+CREATE INDEX type_account ON domains(type,account);
 
 
 CREATE TABLE records (
@@ -34,7 +35,7 @@ CREATE INDEX ordername ON records (ordername);
 CREATE TABLE supermasters (
   ip                    VARCHAR(64) NOT NULL,
   nameserver            VARCHAR(255) NOT NULL,
-  account               VARCHAR(40) CHARACTER SET 'utf8' NOT NULL,
+  account               VARCHAR(63) CHARACTER SET 'utf8' NOT NULL,
   PRIMARY KEY (ip, nameserver)
 ) Engine=InnoDB CHARACTER SET 'latin1';
 

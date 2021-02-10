@@ -297,6 +297,48 @@ bool DNSBackend::getBeforeAndAfterNames(uint32_t id, const DNSName& zonename, co
   return ret;
 }
 
+bool DNSBackend::getCatalogZone(const DNSName& zone, vector<DNSZoneRecord>& dzrs) {
+
+  DomainInfo di;
+  if (getDomainInfo(zone, di, false) && di.isCatalogType()) {
+
+    DNSZoneRecord dzr;
+    this->lookup(QType::NS, zone, di.id);
+    while(this->get(dzr)) {
+      dzr.scopeMask = 0;
+      dzrs.emplace_back(dzr);
+    }
+    dzr.dr.d_ttl= 0;
+    dzr.dr.d_name = DNSName("version")+zone;
+    dzr.dr.d_type = QType::TXT;
+    dzr.dr.d_content = std::make_shared<TXTRecordContent>("2");
+    dzr.auth = true;
+    dzrs.push_back(dzr);
+
+/*    if (!di.masters.empty()) {
+      DNSName property = DNSName("pdns-primaries.defaults") + zone;
+      uint32_t sequence = 0;
+      for (const auto& master : di.masters) {
+        if (di.masters.size() == 1 ) {
+          dzr.dr.d_name = property;
+        } 
+        else {
+          dzr.dr.d_name = DNSName((boost::format("%08x") % sequence++).str()) + property;
+        }
+        dzr.dr.d_content =  std::make_shared<TXTRecordContent>('"' + master.toStringWithPortExcept(53) + '"');
+        dzrs.push_back(dzr);
+      }
+    }
+*/
+    this->getCatalog(di, dzrs);
+
+    return ! dzrs.empty();
+  }
+  else {
+    return false;
+  }
+}
+
 void fillSOAData(const DNSZoneRecord& in, SOAData& sd)
 {
   sd.domain_id = in.domain_id;

@@ -31,6 +31,7 @@
 #include "pdns/arguments.hh"
 #include "pdns/base32.hh"
 #include "pdns/dnssecinfra.hh"
+#include "pdns/dns_random.hh"
 #include <boost/algorithm/string.hpp>
 #include <sstream>
 #include <boost/format.hpp>
@@ -79,6 +80,7 @@ GSQLBackend::GSQLBackend(const string &mode, const string &suffix)
   d_UpdateLastCheckofZoneQuery=getArg("update-lastcheck-query");
   d_UpdateAccountOfZoneQuery=getArg("update-account-query");
   d_InfoOfAllMasterDomainsQuery=getArg("info-all-master-query");
+  d_InfoOfAllMasterDomainsAccountQuery=getArg("info-all-master-account-query");
   d_DeleteDomainQuery=getArg("delete-domain-query");
   d_DeleteZoneQuery=getArg("delete-zone-query");
   d_DeleteRRSetQuery=getArg("delete-rrset-query");
@@ -150,6 +152,7 @@ GSQLBackend::GSQLBackend(const string &mode, const string &suffix)
   d_UpdateLastCheckofZoneQuery_stmt = nullptr;
   d_UpdateAccountOfZoneQuery_stmt = nullptr;
   d_InfoOfAllMasterDomainsQuery_stmt = nullptr;
+  d_InfoOfAllMasterDomainsAccountQuery_stmt = nullptr;
   d_DeleteDomainQuery_stmt = nullptr;
   d_DeleteZoneQuery_stmt = nullptr;
   d_DeleteRRSetQuery_stmt = nullptr;
@@ -477,6 +480,73 @@ void GSQLBackend::getUpdatedMasters(vector<DomainInfo> *updatedDomains)
     } catch ( ... ) {
       continue;
     }
+  }
+}
+
+void GSQLBackend::getCatalog(const DomainInfo& di, vector<DNSZoneRecord>& dzrs, bool include_disabled)
+{
+  try {
+    reconnectIfNeeded();
+
+    d_InfoOfAllMasterDomainsAccountQuery_stmt->
+      bind("account", di.account)->
+      execute()->
+      getResult(d_result)->
+      reset();
+  }
+  catch(SSqlException &e) {
+    throw PDNSException("GSQLBackend::getCatalog() Unable to retrieve catalog for account: '"+di.account+"' : "+e.txtReason());
+  }
+
+  // FIXME: move logic to dnsbackend
+  try {
+    DNSZoneRecord dzr;
+    dzr.domain_id = di.id;
+
+    size_t numanswers=d_result.size();
+    for( size_t n = 0; n < numanswers; ++n ) { // name, masters, disabled
+      ASSERT_ROW_COLUMNS( "info-all-master-catalog-query", d_result[n], 3 );
+
+      if (!include_disabled && !d_result[n][2].empty() && d_result[n][2][0]=='1') {
+        continue;
+      }
+
+      DNSName uniq = DNSName(toBase32Hex(hashQNameWithSalt(itoa(dns_random_uint16()), 0, DNSName(d_result[n][0]))) + ".zones") + di.zone ; // Salt with 2 random bytes because we can ;)
+
+      dzr.dr.d_name = uniq;
+      dzr.dr.d_type = QType::PTR;
+      dzr.dr.d_content =  std::make_shared<PTRRecordContent>(d_result[n][0]);
+      dzrs.push_back(dzr);
+
+/*      vector<string> masters;
+      stringtok(masters, d_result[n][1], " ,\t");
+      if (!masters.empty()) {
+        dzr.dr.d_type = QType::TXT;
+
+        DNSName property = DNSName("pdns-primaries") + uniq;
+        uint32_t sequence = 0;
+        try {
+          for(auto& master : masters) {
+            if (masters.size() == 1 ) {
+              dzr.dr.d_name = property;
+            }
+            else {
+              dzr.dr.d_name = DNSName((boost::format("%08x") % sequence++).str()) + property;
+            }
+            dzr.dr.d_content =  std::make_shared<TXTRecordContent>('"' + ComboAddress(master, 53).toStringWithPortExcept(53) + '"');
+            dzrs.push_back(dzr);
+          }
+        } catch(const PDNSException &e) {
+          g_log<<Logger::Error<<"GSQLBackend::getCatalog() Could not parse masters ("<<d_result[n][1]<<") for zone '"<<di.zone<<"' : "<<e.reason<<endl;
+          dzrs.clear();
+          return;
+        }
+      }
+*/
+    }
+  } catch ( ... ) {
+    g_log<<Logger::Error<<"GSQLBackend::getCatalog() Someting went wrong for zone '"<<di.zone<<"'"<<endl;
+    dzrs.clear();
   }
 }
 
@@ -1398,8 +1468,12 @@ void GSQLBackend::getAllDomains(vector<DomainInfo> *domains, bool include_disabl
         di.kind = DomainInfo::Slave;
       } else if (pdns_iequals(row[3], "NATIVE")) {
         di.kind = DomainInfo::Native;
+      } else if (pdns_iequals(row[3], "CATALOG-MASTER")) {
+        di.kind = DomainInfo::CatalogMaster;
+      } else if (pdns_iequals(row[3], "CATALOG-SLAVE")) {
+        di.kind = DomainInfo::CatalogSlave;
       } else {
-        g_log<<Logger::Warning<<"Could not parse domain kind '"<<row[3]<<"' as one of 'MASTER', 'SLAVE' or 'NATIVE'. Setting zone kind to 'NATIVE'"<<endl;
+        g_log<<Logger::Warning<<"GSQLBackend::getAllDomains() unknown kind '"<<row[3]<<"' for zone '"<<di.zone<<"', assume 'NATIVE'"<<endl;
         di.kind = DomainInfo::Native;
       }
   
@@ -1410,7 +1484,7 @@ void GSQLBackend::getAllDomains(vector<DomainInfo> *domains, bool include_disabl
           try {
             di.masters.emplace_back(m, 53);
           } catch(const PDNSException &e) {
-            g_log<<Logger::Warning<<"Could not parse master address ("<<m<<") for zone '"<<di.zone<<"': "<<e.reason;
+            g_log<<Logger::Warning<<"GSQLBackend::getAllDomains() could not parse master address ("<<m<<") for zone '"<<di.zone<<"', ignoring : "<<e.reason;
           }
         }
       }

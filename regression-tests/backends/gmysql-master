@@ -27,6 +27,19 @@ gmysql-password=$GMYSQLPASSWD
 any-to-tcp=no
 __EOF__
 
+
+		# setup catalog zone
+		mysql --user="$GMYSQLUSER" --password="$GMYSQLPASSWD" --host="$GMYSQLHOST" "$GMYSQLDB" -e "update domains set type = 'MASTER', account = '';"
+
+		$PDNSUTIL --config-dir=. --config-name=gmysql load-zone catalog.invalid zones/catalog.invalid
+		$PDNSUTIL --config-dir=. --config-name=gmysql set-kind catalog.invalid catalog-master
+		$PDNSUTIL --config-dir=. --config-name=gmysql change-slave-zone-master catalog.invalid 127.0.0.1:$port
+
+		$PDNSUTIL --config-dir=. --config-name=gmysql change-slave-zone-master test.com 127.0.0.2:$port
+
+		$PDNSUTIL --config-dir=. --config-name=gmysql change-slave-zone-master minimal.com 127.0.0.1:$port 127.0.0.2:$port
+
+
 		gsql_master gmysql dyndns
 		;;
 

@@ -103,7 +103,7 @@ public:
 
     declare(suffix, "info-zone-query", "", "select id,name,master,last_check,notified_serial,type,account from domains where name=?");
 
-    declare(suffix, "info-all-slaves-query", "", "select id,name,master,last_check from domains where type='SLAVE'");
+    declare(suffix,"info-all-slaves-query","","select id,name,master,last_check from domains where type='SLAVE' or type='CATALOG-SLAVE'"); // FIXME slow
     declare(suffix, "supermaster-query", "", "select account from supermasters where ip=? and nameserver=?");
     declare(suffix, "supermaster-name-to-ips", "", "select ip,account from supermasters where nameserver=? and account=?");
     declare(suffix, "supermaster-add", "", "insert into supermasters (ip, nameserver, account) values (?,?,?)");
@@ -129,6 +129,9 @@ public:
     declare(suffix, "update-serial-query", "", "update domains set notified_serial=? where id=?");
     declare(suffix, "update-lastcheck-query", "", "update domains set last_check=? where id=?");
     declare(suffix, "info-all-master-query", "", "select d.id, d.name, d.notified_serial, r.content from records r join domains d on r.name=d.name where r.type='SOA' and r.disabled=0 and d.type='MASTER'");
+
+    declare(suffix,"info-all-master-account-query","", "select d.name, d.master, r.disabled from records r join domains d on r.name=d.name where r.type='SOA' and d.type='MASTER' and d.account=?");
+
     declare(suffix, "delete-domain-query", "", "delete from domains where name=?");
     declare(suffix, "delete-zone-query", "", "delete from records where domain_id=?");
     declare(suffix, "delete-rrset-query", "", "delete from records where domain_id=? and name=? and type=?");

@@ -273,7 +273,7 @@ string DLNotifyRetrieveHandler(const vector<string>&parts, Utility::pid_t ppid)
     di.masters.push_back(master_ip);
   }
 
-  if(!override_master && (di.kind != DomainInfo::Slave || di.masters.empty()))
+  if(!override_master && (!di.isSlaveType() || di.masters.empty()))
     return "Domain '"+domain.toString()+"' is not a slave domain (or has no master defined)";
 
   shuffle(di.masters.begin(), di.masters.end(), pdns::dns_random_engine());
@@ -328,7 +328,7 @@ string DLNotifyHandler(const vector<string>&parts, Utility::pid_t ppid)
     int total = 0;
     int notified = 0;
     for (const auto& di : domains) {
-      if (di.kind == DomainInfo::Master || di.kind == DomainInfo::Slave) { // MASTER and Slave if slave-renotify is enabled
+      if (di.isMasterType() || di.isSlaveType()) { // Notify master and slave zones if slave-renotify is enabled
         total++;
         if(Communicator.notifyDomain(di.zone, &B))
           notified++;

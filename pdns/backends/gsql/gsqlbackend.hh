@@ -76,6 +76,7 @@ protected:
       d_UpdateSerialOfZoneQuery_stmt = d_db->prepare(d_UpdateSerialOfZoneQuery, 2);
       d_UpdateLastCheckofZoneQuery_stmt = d_db->prepare(d_UpdateLastCheckofZoneQuery, 2);
       d_InfoOfAllMasterDomainsQuery_stmt = d_db->prepare(d_InfoOfAllMasterDomainsQuery, 0);
+      d_InfoOfAllMasterDomainsAccountQuery_stmt = d_db->prepare(d_InfoOfAllMasterDomainsAccountQuery, 1);
       d_DeleteDomainQuery_stmt = d_db->prepare(d_DeleteDomainQuery, 1);
       d_DeleteZoneQuery_stmt = d_db->prepare(d_DeleteZoneQuery, 1);
       d_DeleteRRSetQuery_stmt = d_db->prepare(d_DeleteRRSetQuery, 3);
@@ -140,6 +141,7 @@ protected:
     d_UpdateSerialOfZoneQuery_stmt.reset();
     d_UpdateLastCheckofZoneQuery_stmt.reset();
     d_InfoOfAllMasterDomainsQuery_stmt.reset();
+    d_InfoOfAllMasterDomainsAccountQuery_stmt.reset();
     d_DeleteDomainQuery_stmt.reset();
     d_DeleteZoneQuery_stmt.reset();
     d_DeleteRRSetQuery_stmt.reset();
@@ -201,6 +203,7 @@ public:
   void setFresh(uint32_t domain_id) override;
   void getUnfreshSlaveInfos(vector<DomainInfo> *domains) override;
   void getUpdatedMasters(vector<DomainInfo> *updatedDomains) override;
+  void getCatalog(const DomainInfo& di, vector<DNSZoneRecord>& dzrs, bool include_disabled=false) override;
   bool getDomainInfo(const DNSName &domain, DomainInfo &di, bool getSerial=true) override;
   void setNotified(uint32_t domain_id, uint32_t serial) override;
   bool setMasters(const DNSName &domain, const vector<ComboAddress> &masters) override;
@@ -296,6 +299,7 @@ private:
   string d_UpdateSerialOfZoneQuery;
   string d_UpdateLastCheckofZoneQuery;
   string d_InfoOfAllMasterDomainsQuery;
+  string d_InfoOfAllMasterDomainsAccountQuery;
   string d_DeleteDomainQuery;
   string d_DeleteZoneQuery;
   string d_DeleteRRSetQuery;
@@ -367,6 +371,7 @@ private:
   unique_ptr<SSqlStatement> d_UpdateSerialOfZoneQuery_stmt;
   unique_ptr<SSqlStatement> d_UpdateLastCheckofZoneQuery_stmt;
   unique_ptr<SSqlStatement> d_InfoOfAllMasterDomainsQuery_stmt;
+  unique_ptr<SSqlStatement> d_InfoOfAllMasterDomainsAccountQuery_stmt;
   unique_ptr<SSqlStatement> d_DeleteDomainQuery_stmt;
   unique_ptr<SSqlStatement> d_DeleteZoneQuery_stmt;
   unique_ptr<SSqlStatement> d_DeleteRRSetQuery_stmt;

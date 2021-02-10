@@ -58,7 +58,7 @@ struct DomainInfo
   uint32_t notified_serial;
 
   uint32_t serial;
-  enum DomainKind : uint8_t { Master, Slave, Native } kind;
+  enum DomainKind : uint8_t { Master, Slave, Native, CatalogMaster, CatalogSlave } kind; // Do not reorder
   
   bool operator<(const DomainInfo& rhs) const
   {
@@ -72,7 +72,7 @@ struct DomainInfo
 
   static const char *getKindString(enum DomainKind kind)
   {
-    const char *kinds[]={"Master", "Slave", "Native"};
+    const char *kinds[]={"Master", "Slave", "Native", "Catalog-Master", "Catalog-Slave"};
     return kinds[kind];
   }
 
@@ -82,6 +82,10 @@ struct DomainInfo
       return DomainInfo::Slave;
     else if(pdns_iequals(kind,"MASTER"))
       return DomainInfo::Master;
+    else if(pdns_iequals(kind,"CATALOG-MASTER"))
+      return DomainInfo::CatalogMaster;
+    else if(pdns_iequals(kind,"CATALOG-SLAVE"))
+      return DomainInfo::CatalogSlave;
     else
       return DomainInfo::Native;
   }
@@ -94,6 +98,10 @@ struct DomainInfo
     }
     return false;
   }
+
+  bool isMasterType() const {return (kind == DomainInfo::Master || kind == DomainInfo::CatalogMaster); }
+  bool isSlaveType() const {return (kind == DomainInfo::Slave || kind == DomainInfo::CatalogSlave); }
+  bool isCatalogType() const {return (kind == DomainInfo::CatalogMaster || kind == DomainInfo::CatalogSlave); }
 
 };
 
@@ -310,6 +318,15 @@ public:
   {
   }
   
+  //! get catalog zone content for account
+  virtual void getCatalog(const DomainInfo& di, vector<DNSZoneRecord>& dzrs, bool include_disabled=false)
+  {
+    dzrs.clear();
+  }
+
+  //! get catalog zone
+  bool getCatalogZone(const DNSName& zone, vector<DNSZoneRecord>& zrrs);
+
   //! Called by PowerDNS to inform a backend that a domain has been checked for freshness
   virtual void setFresh(uint32_t domain_id)
   {

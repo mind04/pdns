@@ -79,6 +79,16 @@ struct ZoneStatus
   int numDeltas{0};
 };
 
+struct CatalogDomainInfo
+{
+  DomainInfo di;
+  string uniq;
+
+  bool operator<(const CatalogDomainInfo& rhs) const
+  {
+    return di.zone < rhs.di.zone;
+  }
+};
 
 void CommunicatorClass::ixfrSuck(const DNSName &domain, const TSIGTriplet& tt, const ComboAddress& laddr, const ComboAddress& remote, unique_ptr<AuthLua4>& pdl,
                                  ZoneStatus& zs, vector<DNSRecord>* axfr)
@@ -95,7 +105,7 @@ void CommunicatorClass::ixfrSuck(const DNSName &domain, const TSIGTriplet& tt, c
 
     bool wrongDomainKind = false;
     // this checks three error conditions, and sets wrongDomainKind if we hit the third & had an error
-    if(!B.getDomainInfo(domain, di) || !di.backend || (wrongDomainKind = true, di.kind != DomainInfo::Slave)) { // di.backend and B are mostly identical
+    if(!B.getDomainInfo(domain, di) || !di.backend || (wrongDomainKind = true, !di.isSlaveType())) { // di.backend and B are mostly identical
       if(wrongDomainKind)
         g_log<<Logger::Warning<<logPrefix<<"can't determine backend, not configured as slave"<<endl;
       else
@@ -296,6 +306,67 @@ static vector<DNSResourceRecord> doAxfr(const ComboAddress& raddr, const DNSName
   return rrs;
 }   
 
+static bool catalogUpdate(const DomainInfo& di, vector<DNSResourceRecord>& rrs, const string& logPrefix)
+{
+  //auto lexical_compare = [](int a, int b) { return (a.qname == b.qname ? a.qtype < b.qtype : a.qname.canonCompare(b.qname); };
+  //sort(rrs.begin(), rrs.end(), decltype(cmp)> s(cmp));
+
+  set<CatalogDomainInfo> fromXFR, fromDB;
+
+  // From XFR start
+  bool suportedSchema{false};
+  bool hasSOA{false};
+  bool hasNS{false};
+
+  CatalogDomainInfo cdi;
+  cdi.di.masters = di.masters;
+  cdi.di.account = di.account;
+
+  vector<DNSResourceRecord> ret;
+
+  for(auto& rr: rrs) {
+    if (di.zone == rr.qname) {
+      if (rr.qtype == QType::SOA) {
+        hasSOA = true;
+        continue;
+      }
+      else if(rr.qtype == QType::NS) {
+        hasNS = true;
+        continue;
+      }
+    }
+    else if (rr.qname == DNSName("version") + di.zone && rr.qtype == QType::TXT && rr.content == "\"2\"") {
+      suportedSchema = true;
+    }
+    else if (rr.qname.isPartOf(DNSName("zones") + di.zone)) {
+      DNSName uniq = rr.qname.makeRelative(DNSName("zones") + di.zone);
+      if (uniq.countLabels() == 1 && rr.qtype == QType::PTR) {
+        cdi.di.zone = DNSName(rr.content);
+        cdi.uniq = uniq.toStringNoDot();
+        fromXFR.insert(cdi);
+      }
+    }
+    rr.disabled=true;
+  }
+
+  if (hasSOA && hasNS && suportedSchema) {
+    g_log<<Logger::Info<<logPrefix<<"catalog: zone and catalog zone schema version valid"<<endl;
+  }
+  else {
+    g_log<<Logger::Warning<<logPrefix<<"catalog: zone or catalog zone schema version invalid, skip updates"<<endl;
+    return false;
+  }
+
+
+  // From DB start
+  // di.db->getSlaveCatalog(di, fromDB);
+
+
+  // Process
+
+
+  return true;
+}
 
 void CommunicatorClass::suck(const DNSName &domain, const ComboAddress& remote, bool force)
 {
@@ -320,7 +391,7 @@ void CommunicatorClass::suck(const DNSName &domain, const ComboAddress& remote, 
     DNSSECKeeper dk (&B); // reuse our UeberBackend copy for DNSSECKeeper
     bool wrongDomainKind = false;
     // this checks three error conditions & sets wrongDomainKind if we hit the third
-    if(!B.getDomainInfo(domain, di) || !di.backend || (wrongDomainKind = true, !force && di.kind != DomainInfo::Slave)) { // di.backend and B are mostly identical
+    if(!B.getDomainInfo(domain, di, false) || !di.backend || (wrongDomainKind = true, !force && !di.isSlaveType())) { // di.backend and B are mostly identical
       if(wrongDomainKind)
         g_log<<Logger::Warning<<logPrefix<<"can't determine backend, not configured as slave"<<endl;
       else
@@ -355,7 +426,7 @@ void CommunicatorClass::suck(const DNSName &domain, const ComboAddress& remote, 
         script=scripts[0];
       }
     }
-    if(!script.empty()){
+    if(!script.empty() && ! di.isCatalogType()){
       try {
         pdl = make_unique<AuthLua4>();
         pdl->loadFile(script);
@@ -447,6 +518,12 @@ void CommunicatorClass::suck(const DNSName &domain, const ComboAddress& remote, 
       g_log<<Logger::Notice<<logPrefix<<"retrieval finished"<<endl;
     }
 
+    if(di.isCatalogType()) {
+      if (! catalogUpdate(di, rrs, logPrefix)) {
+        g_log<<Logger::Notice<<logPrefix<<"catalog: update failed, only import records"<<endl;
+      }
+    }
+
     if(zs.isNSEC3) {
       zs.ns3pr.d_flags = zs.optOutFlag ? 1 : 0;
     }
@@ -511,7 +588,7 @@ void CommunicatorClass::suck(const DNSName &domain, const ComboAddress& remote, 
       }
     }
 
-    bool doent=true;
+    bool doent=!di.isCatalogType();
     uint32_t maxent = ::arg().asNum("max-ent-entries");
     DNSName shorter, ordername;
     set<DNSName> rrterm;

@@ -983,7 +983,6 @@ void LMDBBackend::getAllDomains(vector<DomainInfo>* domains, bool include_disabl
 void LMDBBackend::getUnfreshSlaveInfos(vector<DomainInfo>* domains)
 {
   //  cout<<"Start of getUnfreshSlaveInfos"<<endl;
-  domains->clear();
   auto txn = d_tdomains->getROTransaction();
 
   time_t now = time(0);
