@@ -105,7 +105,20 @@ struct DomainInfo
 
 };
 
+struct CatalogInfo
+{
+  DNSName zone;
+  vector<ComboAddress> primaries;
+  string account, uniq;
+
+  bool operator<(const CatalogInfo& rhs) const
+  {
+    return zone < rhs.zone;
+  }
+};
+
 struct TSIGKey {
+
    DNSName name;
    DNSName algorithm;
    std::string key;
@@ -318,8 +331,14 @@ public:
   {
   }
   
-  //! get catalog primari zone domains
+  //! get catalog primary zone domains
   virtual bool getCatalogPrimary(const DomainInfo& di, vector<DomainInfo>& zones, bool include_disabled=false)
+  {
+    return true;
+  }
+
+  //! get catalog secondary zone domains
+  virtual bool getCatalogSecondary(const string& account, set<CatalogInfo>& zones)
   {
     return true;
   }

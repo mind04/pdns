@@ -80,6 +80,7 @@ GSQLBackend::GSQLBackend(const string &mode, const string &suffix)
   d_UpdateAccountOfZoneQuery=getArg("update-account-query");
   d_InfoOfAllMasterDomainsQuery=getArg("info-all-master-query");
   d_InfoCatalogPrimaryQuery=getArg("info-catalog-primary-query");
+  d_InfoCatalogSecondaryQuery=getArg("info-catalog-secondary-query");
   d_DeleteDomainQuery=getArg("delete-domain-query");
   d_DeleteZoneQuery=getArg("delete-zone-query");
   d_DeleteRRSetQuery=getArg("delete-rrset-query");
@@ -152,6 +153,7 @@ GSQLBackend::GSQLBackend(const string &mode, const string &suffix)
   d_UpdateAccountOfZoneQuery_stmt = nullptr;
   d_InfoOfAllMasterDomainsQuery_stmt = nullptr;
   d_InfoCatalogPrimaryQuery_stmt = nullptr;
+  d_InfoCatalogSecondaryQuery_stmt = nullptr;
   d_DeleteDomainQuery_stmt = nullptr;
   d_DeleteZoneQuery_stmt = nullptr;
   d_DeleteRRSetQuery_stmt = nullptr;
@@ -498,6 +500,7 @@ bool GSQLBackend::getCatalogPrimary(const DomainInfo& di, vector<DomainInfo>& zo
   }
 
   size_t n;
+
   try {
     DomainInfo d;
     size_t numanswers=d_result.size();
@@ -517,6 +520,52 @@ bool GSQLBackend::getCatalogPrimary(const DomainInfo& di, vector<DomainInfo>& zo
   }
   catch ( ... ) {
     g_log<<Logger::Error<<"GSQLBackend::getCatalogPrimary() Someting went wrong for zone '"<<d_result[n][1]<<"'"<<endl;
+    return false;
+  }
+}
+
+bool GSQLBackend::getCatalogSecondary(const string& account, set<CatalogInfo>& zones)
+{
+  try {
+    reconnectIfNeeded();
+
+    d_InfoCatalogSecondaryQuery_stmt->
+      bind("account", account)->
+      execute()->
+      getResult(d_result)->
+      reset();
+  }
+  catch(SSqlException &e) {
+    throw PDNSException("GSQLBackend::getCatalogSecondary() Unable to retrieve catalog for account: '"+account+"' : "+e.txtReason());
+  }
+
+  size_t n;
+
+  try {
+    CatalogInfo ci;
+    size_t numanswers=d_result.size();
+
+    for (n = 0; n < numanswers; ++n) { // id, name, master
+      ASSERT_ROW_COLUMNS( "info-catalog-secondary-query", d_result[n], 3 );
+
+      ci.zone = DNSName(d_result[n][1]);
+      ci.uniq = toBase32Hex(hashQNameWithSalt(d_result[n][0], 0, ci.zone));
+      ci.primaries.clear();
+      vector<string> tmp;
+      stringtok(tmp, d_result[n][2], " ,\t");
+      for (const auto& primary : tmp) {
+        ci.primaries.emplace_back(primary, 53);
+      }
+      tmp.clear();
+      if (getDomainMetadata(ci.zone, "CATALOG-UNIQ", tmp) && !tmp.empty()) {
+        ci.uniq = std::move(tmp.at(0));
+      }
+      zones.insert(ci);
+    }
+    return true;
+  }
+  catch ( ... ) {
+    g_log<<Logger::Error<<"GSQLBackend::getCatalogSecondary() Someting went wrong for zone '"<<d_result[n][1]<<"'"<<endl;
     return false;
   }
 }

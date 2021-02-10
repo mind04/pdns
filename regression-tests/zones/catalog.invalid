@@ -1,8 +1,8 @@
 $TTL 3600
 $ORIGIN catalog.invalid.
 @		IN	SOA	ns1.zone.invalid. hostmaster.zone.invalid. (  2020122401
-			8H ; refresh
-			2H ; retry
+			1M ; refresh
+			30S ; retry
 			1W ; expire
 			1D ; default_ttl
 			)

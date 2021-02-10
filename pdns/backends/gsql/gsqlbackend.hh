@@ -77,6 +77,7 @@ protected:
       d_UpdateLastCheckofZoneQuery_stmt = d_db->prepare(d_UpdateLastCheckofZoneQuery, 2);
       d_InfoOfAllMasterDomainsQuery_stmt = d_db->prepare(d_InfoOfAllMasterDomainsQuery, 0);
       d_InfoCatalogPrimaryQuery_stmt = d_db->prepare(d_InfoCatalogPrimaryQuery, 1);
+      d_InfoCatalogSecondaryQuery_stmt = d_db->prepare(d_InfoCatalogSecondaryQuery, 1);
       d_DeleteDomainQuery_stmt = d_db->prepare(d_DeleteDomainQuery, 1);
       d_DeleteZoneQuery_stmt = d_db->prepare(d_DeleteZoneQuery, 1);
       d_DeleteRRSetQuery_stmt = d_db->prepare(d_DeleteRRSetQuery, 3);
@@ -142,6 +143,7 @@ protected:
     d_UpdateLastCheckofZoneQuery_stmt.reset();
     d_InfoOfAllMasterDomainsQuery_stmt.reset();
     d_InfoCatalogPrimaryQuery_stmt.reset();
+    d_InfoCatalogSecondaryQuery_stmt.reset();
     d_DeleteDomainQuery_stmt.reset();
     d_DeleteZoneQuery_stmt.reset();
     d_DeleteRRSetQuery_stmt.reset();
@@ -204,6 +206,7 @@ public:
   void getUnfreshSlaveInfos(vector<DomainInfo> *domains) override;
   void getUpdatedMasters(vector<DomainInfo> *updatedDomains) override;
   bool getCatalogPrimary(const DomainInfo& di, vector<DomainInfo>& zones, bool include_disabled=false) override;
+  bool getCatalogSecondary(const string& account, set<CatalogInfo>& zones) override;
   bool getDomainInfo(const DNSName &domain, DomainInfo &di, bool getSerial=true) override;
   void setNotified(uint32_t domain_id, uint32_t serial) override;
   bool setMasters(const DNSName &domain, const vector<ComboAddress> &masters) override;
@@ -300,6 +303,7 @@ private:
   string d_UpdateLastCheckofZoneQuery;
   string d_InfoOfAllMasterDomainsQuery;
   string d_InfoCatalogPrimaryQuery;
+  string d_InfoCatalogSecondaryQuery;
   string d_DeleteDomainQuery;
   string d_DeleteZoneQuery;
   string d_DeleteRRSetQuery;
@@ -372,6 +376,7 @@ private:
   unique_ptr<SSqlStatement> d_UpdateLastCheckofZoneQuery_stmt;
   unique_ptr<SSqlStatement> d_InfoOfAllMasterDomainsQuery_stmt;
   unique_ptr<SSqlStatement> d_InfoCatalogPrimaryQuery_stmt;
+  unique_ptr<SSqlStatement> d_InfoCatalogSecondaryQuery_stmt;
   unique_ptr<SSqlStatement> d_DeleteDomainQuery_stmt;
   unique_ptr<SSqlStatement> d_DeleteZoneQuery_stmt;
   unique_ptr<SSqlStatement> d_DeleteRRSetQuery_stmt;

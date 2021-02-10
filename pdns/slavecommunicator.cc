@@ -79,17 +79,6 @@ struct ZoneStatus
   int numDeltas{0};
 };
 
-struct CatalogDomainInfo
-{
-  DomainInfo di;
-  string uniq;
-
-  bool operator<(const CatalogDomainInfo& rhs) const
-  {
-    return di.zone < rhs.di.zone;
-  }
-};
-
 void CommunicatorClass::ixfrSuck(const DNSName &domain, const TSIGTriplet& tt, const ComboAddress& laddr, const ComboAddress& remote, unique_ptr<AuthLua4>& pdl,
                                  ZoneStatus& zs, vector<DNSRecord>* axfr)
 {
@@ -306,21 +295,134 @@ static vector<DNSResourceRecord> doAxfr(const ComboAddress& raddr, const DNSName
   return rrs;
 }   
 
-static bool catalogUpdate(const DomainInfo& di, vector<DNSResourceRecord>& rrs, const string& logPrefix)
+static bool catalogDiff(const DomainInfo& di, set<CatalogInfo>& fromXFR, set<CatalogInfo>& fromDB, const string& logPrefix)
+{
+  extern CommunicatorClass Communicator;
+
+  bool doTransaction{true};
+  bool inTransaction{false};
+  CatalogInfo ciCreate, ciRemove;
+  vector<CatalogInfo> retreive;
+
+  try {
+    auto xfr = fromXFR.begin();
+    auto db = fromDB.begin();
+    while (xfr != fromXFR.end() || db != fromDB.end())
+    {
+      bool create{false};
+      bool remove{false};
+
+      if ((xfr != fromXFR.end() && db == fromDB.end()) || *xfr < *db) {
+        ciCreate = *xfr;
+        create = true;
+        ++xfr;
+      }
+      else if ((db != fromDB.end() && xfr == fromXFR.end()) || *db < *xfr) {
+        ciRemove = *db;
+        remove = true;
+        ++db;
+      }
+      else {
+        CatalogInfo ciXFR = *xfr;
+        CatalogInfo ciDB = *db;
+        if (ciXFR.uniq == ciDB.uniq) {
+          if (ciXFR.primaries != ciDB.primaries) {
+            if (doTransaction && (inTransaction = di.backend->startTransaction(di.zone))) {
+              g_log<<Logger::Warning<<logPrefix<<"backend transaction started"<<endl;
+              doTransaction = false;
+            }
+            g_log<<Logger::Warning<<logPrefix<<"update primaries for zone '"<<ciXFR.zone<<"'"<<endl;
+            di.backend->setMasters(ciXFR.zone, ciXFR.primaries);
+            retreive.emplace_back(ciXFR);
+          }
+        }
+        else {
+          ciCreate = *xfr;
+          ciRemove = *db;
+          create = true;
+          remove = true;
+        }
+        ++xfr;
+        ++db;
+      }
+
+      if (remove) {
+        if (doTransaction && (inTransaction = di.backend->startTransaction(di.zone))) {
+          g_log<<Logger::Warning<<logPrefix<<"backend transaction started"<<endl;
+          doTransaction = false;
+        }
+        g_log<<Logger::Warning<<logPrefix<<"delete zone '"<<ciRemove.zone<<"'"<<endl;
+        di.backend->deleteDomain(ciRemove.zone);
+      }
+
+      if (create) {
+        if (doTransaction && (inTransaction = di.backend->startTransaction(di.zone))) {
+          g_log<<Logger::Warning<<logPrefix<<"backend transaction started"<<endl;
+          doTransaction = false;
+        }
+        g_log<<Logger::Warning<<logPrefix<<"create zone '"<<ciCreate.zone<<"'"<<endl;
+        DomainInfo d;
+        if (di.backend->getDomainInfo(ciCreate.zone, d)) {
+          g_log<<Logger::Warning<<logPrefix<<"zone '"<<d.zone<<"' allready exists in account '"<<d.account<<"', skipped"<<endl;
+          continue;
+        }
+        di.backend->createDomain(ciCreate.zone, DomainInfo::Slave, ciCreate.primaries, ciCreate.account);
+        vector<string> meta;
+        meta.push_back(ciCreate.uniq);
+        di.backend->setDomainMetadata(ciCreate.zone, "CATALOG-UNIQ", meta);
+        retreive.emplace_back(ciCreate);
+      }
+    }
+
+    if (inTransaction && di.backend->commitTransaction()) {
+        g_log<<Logger::Warning<<logPrefix<<"backend transaction committed"<<endl;
+    }
+
+    // retreive new and updated zones
+    for (auto& ret : retreive) {
+      if (!ret.primaries.empty()) {
+        shuffle(ret.primaries.begin(), ret.primaries.end(), pdns::dns_random_engine());
+        const auto& master = ret.primaries.front();
+        Communicator.addSuckRequest(ret.zone, master);
+      }
+    }
+
+    return true;
+  }
+  catch(DBException &re) {
+    g_log<<Logger::Error<<logPrefix<<"DBException "<<re.reason<<endl;
+  }
+  catch(PDNSException &pe) {
+    g_log<<Logger::Error<<logPrefix<<"PDNSException "<<pe.reason<<endl;
+  }
+  catch(std::exception &re) {
+    g_log<<Logger::Error<<logPrefix<<"std::exception "<<re.what()<<endl;
+  }
+
+  if(di.backend && inTransaction) {
+    g_log<<Logger::Info<<logPrefix<<"aborting possible open transaction"<<endl;
+    di.backend->abortTransaction();
+  }
+
+  return false;
+}
+
+static bool catalogUpdate(const DomainInfo& di, vector<DNSResourceRecord>& rrs, string logPrefix)
 {
   //auto lexical_compare = [](int a, int b) { return (a.qname == b.qname ? a.qtype < b.qtype : a.qname.canonCompare(b.qname); };
   //sort(rrs.begin(), rrs.end(), decltype(cmp)> s(cmp));
 
-  set<CatalogDomainInfo> fromXFR, fromDB;
+  logPrefix += "Catalog-Zone ";
 
-  // From XFR start
+  set<CatalogInfo> fromXFR, fromDB;
+
+  // From XFR
   bool suportedSchema{false};
   bool hasSOA{false};
   bool hasNS{false};
 
-  CatalogDomainInfo cdi;
-  cdi.di.masters = di.masters;
-  cdi.di.account = di.account;
+  CatalogInfo ci;
+  ci.primaries = di.masters;
 
   vector<DNSResourceRecord> ret;
 
@@ -341,29 +443,31 @@ static bool catalogUpdate(const DomainInfo& di, vector<DNSResourceRecord>& rrs, 
     else if (rr.qname.isPartOf(DNSName("zones") + di.zone)) {
       DNSName uniq = rr.qname.makeRelative(DNSName("zones") + di.zone);
       if (uniq.countLabels() == 1 && rr.qtype == QType::PTR) {
-        cdi.di.zone = DNSName(rr.content);
-        cdi.uniq = uniq.toStringNoDot();
-        fromXFR.insert(cdi);
+        ci.zone = DNSName(rr.content);
+        ci.uniq = uniq.toStringNoDot();
+        fromXFR.insert(ci);
       }
     }
     rr.disabled=true;
   }
 
   if (hasSOA && hasNS && suportedSchema) {
-    g_log<<Logger::Info<<logPrefix<<"catalog: zone and catalog zone schema version valid"<<endl;
+    g_log<<Logger::Info<<logPrefix<<"zone and catalog zone schema version valid"<<endl;
   }
   else {
-    g_log<<Logger::Warning<<logPrefix<<"catalog: zone not valid or catalog zone schema version not supported, skip updates"<<endl;
+    g_log<<Logger::Warning<<logPrefix<<"zone not valid or catalog zone schema version not supported, skip updates"<<endl;
     return false;
   }
 
-
-  // From DB start
-  // di.db->getSlaveCatalog(di, fromDB);
-
+  // From DB
+  if (!di.backend->getCatalogSecondary(di.account, fromDB)) {
+    return false;
+  }
 
   // Process
-
+  if (!catalogDiff(di, fromXFR, fromDB, logPrefix)) {
+    return false;
+  }
 
   return true;
 }

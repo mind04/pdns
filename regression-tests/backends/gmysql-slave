@@ -53,6 +53,8 @@ __EOF__
 	$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone catalog.invalid 127.0.0.1:$port
 	$PDNSUTIL --config-dir=. --config-name=gmysql2 set-kind catalog.invalid catalog-slave
 
+	$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone remove.invalid 127.0.0.1:$port
+
 	port=$((port+100))
 
 	$RUNWRAPPER $PDNS2 --daemon=no --local-port=$port --config-dir=. \
