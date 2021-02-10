@@ -324,13 +324,13 @@ static bool catalogUpdate(const DomainInfo& di, vector<DNSResourceRecord>& rrs, 
 
   vector<DNSResourceRecord> ret;
 
-  for(auto& rr: rrs) {
+  for (auto& rr: rrs) {
     if (di.zone == rr.qname) {
       if (rr.qtype == QType::SOA) {
         hasSOA = true;
         continue;
       }
-      else if(rr.qtype == QType::NS) {
+      else if (rr.qtype == QType::NS) {
         hasNS = true;
         continue;
       }
@@ -353,7 +353,7 @@ static bool catalogUpdate(const DomainInfo& di, vector<DNSResourceRecord>& rrs, 
     g_log<<Logger::Info<<logPrefix<<"catalog: zone and catalog zone schema version valid"<<endl;
   }
   else {
-    g_log<<Logger::Warning<<logPrefix<<"catalog: zone or catalog zone schema version invalid, skip updates"<<endl;
+    g_log<<Logger::Warning<<logPrefix<<"catalog: zone not valid or catalog zone schema version not supported, skip updates"<<endl;
     return false;
   }
 
@@ -391,7 +391,7 @@ void CommunicatorClass::suck(const DNSName &domain, const ComboAddress& remote, 
     DNSSECKeeper dk (&B); // reuse our UeberBackend copy for DNSSECKeeper
     bool wrongDomainKind = false;
     // this checks three error conditions & sets wrongDomainKind if we hit the third
-    if(!B.getDomainInfo(domain, di, false) || !di.backend || (wrongDomainKind = true, !force && !di.isSlaveType())) { // di.backend and B are mostly identical
+    if(!B.getDomainInfo(domain, di) || !di.backend || (wrongDomainKind = true, !force && !di.isSlaveType())) { // di.backend and B are mostly identical
       if(wrongDomainKind)
         g_log<<Logger::Warning<<logPrefix<<"can't determine backend, not configured as slave"<<endl;
       else

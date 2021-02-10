@@ -29,10 +29,12 @@
 #include "logger.hh"
 
 #include <sys/types.h>
-#include "pdns/packetcache.hh"
+#include "packetcache.hh"
 #include "dnspacket.hh"
 #include "dns.hh"
 #include "statbag.hh"
+#include "dnssecinfra.hh"
+#include "base32.hh"
 
 extern StatBag S;
 
@@ -297,31 +299,44 @@ bool DNSBackend::getBeforeAndAfterNames(uint32_t id, const DNSName& zonename, co
   return ret;
 }
 
-bool DNSBackend::getCatalogZone(const DNSName& zone, vector<DNSZoneRecord>& dzrs) {
-
+bool DNSBackend::getCatalogPrimaryZone(const DNSName& zone, vector<DNSZoneRecord>& dzrs)
+{
   DomainInfo di;
   if (getDomainInfo(zone, di, false) && di.isCatalogType()) {
+    if (dzrs.empty()) {
+      DNSZoneRecord dzr;
+      this->lookup(QType::NS, zone, di.id);
+      while (this->get(dzr)) {
+        dzr.scopeMask = 0;
+        dzrs.emplace_back(dzr);
+      }
+      dzr.dr.d_ttl= 0;
+      dzr.dr.d_name = DNSName("version")+zone;
+      dzr.dr.d_type = QType::TXT;
+      dzr.dr.d_content = std::make_shared<TXTRecordContent>("2");
+      dzr.auth = true;
+      dzrs.push_back(dzr);
+    }
+
+    vector<DomainInfo> zones;
+    if (!this->getCatalogPrimary(di, zones)) {
+      dzrs.clear();
+      return false;
+    }
 
     DNSZoneRecord dzr;
-    this->lookup(QType::NS, zone, di.id);
-    while(this->get(dzr)) {
-      dzr.scopeMask = 0;
-      dzrs.emplace_back(dzr);
+    dzr.domain_id = di.id;
+    dzr.dr.d_type = QType::PTR;
+
+    for (const auto& d : zones) {
+      dzr.dr.d_name = DNSName(toBase32Hex(hashQNameWithSalt(std::to_string(d.id), 0, d.zone)) + ".zones") + di.zone; // salt with domain id
+      dzr.dr.d_content =  std::make_shared<PTRRecordContent>(d.zone.toString());
+
+      dzrs.push_back(dzr);
     }
-    dzr.dr.d_ttl= 0;
-    dzr.dr.d_name = DNSName("version")+zone;
-    dzr.dr.d_type = QType::TXT;
-    dzr.dr.d_content = std::make_shared<TXTRecordContent>("2");
-    dzr.auth = true;
-    dzrs.push_back(dzr);
-
-    this->getCatalog(di, dzrs);
-
-    return ! dzrs.empty();
+    return true;
   }
-  else {
-    return false;
-  }
+  return false;
 }
 
 void fillSOAData(const DNSZoneRecord& in, SOAData& sd)

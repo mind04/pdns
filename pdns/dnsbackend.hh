@@ -318,14 +318,14 @@ public:
   {
   }
   
-  //! get catalog zone content for account
-  virtual void getCatalog(const DomainInfo& di, vector<DNSZoneRecord>& dzrs, bool include_disabled=false)
+  //! get catalog primari zone domains
+  virtual bool getCatalogPrimary(const DomainInfo& di, vector<DomainInfo>& zones, bool include_disabled=false)
   {
-    dzrs.clear();
+    return true;
   }
 
-  //! get catalog zone
-  bool getCatalogZone(const DNSName& zone, vector<DNSZoneRecord>& zrrs);
+  //! get catalog primary zone
+  bool getCatalogPrimaryZone(const DNSName& zone, vector<DNSZoneRecord>& zrrs);
 
   //! Called by PowerDNS to inform a backend that a domain has been checked for freshness
   virtual void setFresh(uint32_t domain_id)

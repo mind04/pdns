@@ -31,7 +31,6 @@
 #include "pdns/arguments.hh"
 #include "pdns/base32.hh"
 #include "pdns/dnssecinfra.hh"
-#include "pdns/dns_random.hh"
 #include <boost/algorithm/string.hpp>
 #include <sstream>
 #include <boost/format.hpp>
@@ -80,7 +79,7 @@ GSQLBackend::GSQLBackend(const string &mode, const string &suffix)
   d_UpdateLastCheckofZoneQuery=getArg("update-lastcheck-query");
   d_UpdateAccountOfZoneQuery=getArg("update-account-query");
   d_InfoOfAllMasterDomainsQuery=getArg("info-all-master-query");
-  d_InfoOfAllMasterDomainsAccountQuery=getArg("info-all-master-account-query");
+  d_InfoCatalogPrimaryQuery=getArg("info-catalog-primary-query");
   d_DeleteDomainQuery=getArg("delete-domain-query");
   d_DeleteZoneQuery=getArg("delete-zone-query");
   d_DeleteRRSetQuery=getArg("delete-rrset-query");
@@ -152,7 +151,7 @@ GSQLBackend::GSQLBackend(const string &mode, const string &suffix)
   d_UpdateLastCheckofZoneQuery_stmt = nullptr;
   d_UpdateAccountOfZoneQuery_stmt = nullptr;
   d_InfoOfAllMasterDomainsQuery_stmt = nullptr;
-  d_InfoOfAllMasterDomainsAccountQuery_stmt = nullptr;
+  d_InfoCatalogPrimaryQuery_stmt = nullptr;
   d_DeleteDomainQuery_stmt = nullptr;
   d_DeleteZoneQuery_stmt = nullptr;
   d_DeleteRRSetQuery_stmt = nullptr;
@@ -483,43 +482,42 @@ void GSQLBackend::getUpdatedMasters(vector<DomainInfo> *updatedDomains)
   }
 }
 
-void GSQLBackend::getCatalog(const DomainInfo& di, vector<DNSZoneRecord>& dzrs, bool include_disabled)
+bool GSQLBackend::getCatalogPrimary(const DomainInfo& di, vector<DomainInfo>& zones, bool include_disabled)
 {
   try {
     reconnectIfNeeded();
 
-    d_InfoOfAllMasterDomainsAccountQuery_stmt->
+    d_InfoCatalogPrimaryQuery_stmt->
       bind("account", di.account)->
       execute()->
       getResult(d_result)->
       reset();
   }
   catch(SSqlException &e) {
-    throw PDNSException("GSQLBackend::getCatalog() Unable to retrieve catalog for account: '"+di.account+"' : "+e.txtReason());
+    throw PDNSException("GSQLBackend::getCatalogPrimary() Unable to retrieve catalog for account: '"+di.account+"' : "+e.txtReason());
   }
 
+  size_t n;
   try {
-    DNSZoneRecord dzr;
-    dzr.domain_id = di.id;
-
+    DomainInfo d;
     size_t numanswers=d_result.size();
-    for( size_t n = 0; n < numanswers; ++n ) { // name, masters, disabled
-      ASSERT_ROW_COLUMNS( "info-all-master-catalog-query", d_result[n], 3 );
+
+    for(n = 0; n < numanswers; ++n) { // id, name, disabled
+      ASSERT_ROW_COLUMNS( "info-catalog-primary-query", d_result[n], 3 );
 
       if (!include_disabled && !d_result[n][2].empty() && d_result[n][2][0]=='1') {
         continue;
       }
 
-      DNSName uniq = DNSName(toBase32Hex(hashQNameWithSalt(itoa(dns_random_uint16()), 0, DNSName(d_result[n][0]))) + ".zones") + di.zone ; // Salt with 2 random bytes because we can ;)
-
-      dzr.dr.d_name = uniq;
-      dzr.dr.d_type = QType::PTR;
-      dzr.dr.d_content =  std::make_shared<PTRRecordContent>(d_result[n][0]);
-      dzrs.push_back(dzr);
+      d.id = pdns_stou(d_result[n][0]);
+      d.zone = DNSName(d_result[n][1]);
+      zones.emplace_back(d);
     }
-  } catch ( ... ) {
-    g_log<<Logger::Error<<"GSQLBackend::getCatalog() Someting went wrong for zone '"<<di.zone<<"'"<<endl;
-    dzrs.clear();
+    return true;
+  }
+  catch ( ... ) {
+    g_log<<Logger::Error<<"GSQLBackend::getCatalogPrimary() Someting went wrong for zone '"<<d_result[n][1]<<"'"<<endl;
+    return false;
   }
 }
 

@@ -676,7 +676,7 @@ int TCPNameserver::doAXFR(const DNSName &target, std::unique_ptr<DNSPacket>& q, 
   set<DNSName> qnames, nsset, terms;
 
   if (di.kind == DomainInfo::CatalogMaster) {
-    sd.db->getCatalogZone(target, zrrs);
+    sd.db->getCatalogPrimaryZone(target, zrrs);
     if (!zrrs.empty()) {
       goto send;
     }
