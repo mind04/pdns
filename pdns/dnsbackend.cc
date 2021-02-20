@@ -316,6 +316,10 @@ bool DNSBackend::getCatalogPrimaryZone(const DNSName& zone, vector<DNSZoneRecord
       dzr.dr.d_content = std::make_shared<TXTRecordContent>("2");
       dzr.auth = true;
       dzrs.push_back(dzr);
+
+      dzr.dr.d_name = DNSName("timestamp")+zone;
+      dzr.dr.d_content = std::make_shared<TXTRecordContent>(std::to_string(time(nullptr)));
+      dzrs.push_back(dzr);
     }
 
     vector<DomainInfo> zones;
