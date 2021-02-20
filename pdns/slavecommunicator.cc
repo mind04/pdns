@@ -335,6 +335,20 @@ static bool catalogDiff(const DomainInfo& di, const set<CatalogInfo>& fromXFR, c
             di.backend->setMasters(ciXFR.zone, ciXFR.primaries);
             retreive.emplace_back(ciXFR);
           }
+          if (di.account == ciDB.account && ciXFR.coo != ciDB.coo) {
+            if (doTransaction && (inTransaction = di.backend->startTransaction(di.zone))) {
+              g_log<<Logger::Warning<<logPrefix<<"backend transaction started"<<endl;
+              doTransaction = false;
+            }
+            vector<string> meta;
+            if (ciXFR.coo.empty()) {
+              di.backend->setDomainMetadata(ciXFR.zone, "CATALOG-COO", meta);
+            }
+            else {
+              meta.push_back(ciXFR.coo.toString());
+              di.backend->setDomainMetadata(ciXFR.zone, "CATALOG-COO", meta);
+            }
+          }
         }
         else {
           ciCreate = *xfr;
@@ -363,6 +377,15 @@ static bool catalogDiff(const DomainInfo& di, const set<CatalogInfo>& fromXFR, c
         g_log<<Logger::Warning<<logPrefix<<"create zone '"<<ciCreate.zone<<"'"<<endl;
         DomainInfo d;
         if (di.backend->getDomainInfo(ciCreate.zone, d)) {
+          vector<string> meta;
+          if (di.backend->getDomainMetadata(d.zone, "CATALOG-COO", meta) && !meta.empty()) {
+            if (di.zone == DNSName(meta.at(0))) {
+              di.backend->setAccount(d.zone, di.account);
+              g_log<<Logger::Warning<<logPrefix<<"zone '"<<d.zone<<"' owner change, old account '"<<d.account<<"', new account '"<<di.account<<"'"<<endl;
+            }
+            // TODO implement uniq
+            continue;
+          }
           g_log<<Logger::Warning<<logPrefix<<"zone '"<<d.zone<<"' allready exists in account '"<<d.account<<"', skipped"<<endl;
           continue;
         }
@@ -370,6 +393,11 @@ static bool catalogDiff(const DomainInfo& di, const set<CatalogInfo>& fromXFR, c
         vector<string> meta;
         meta.push_back(ciCreate.uniq);
         di.backend->setDomainMetadata(ciCreate.zone, "CATALOG-UNIQ", meta);
+        if (!ciCreate.coo.empty()) {
+          meta.clear();
+          meta.push_back(ciCreate.coo.toString());
+          di.backend->setDomainMetadata(ciCreate.zone, "CATALOG-COO", meta);
+        }
         retreive.emplace_back(ciCreate);
       }
     }
@@ -424,6 +452,10 @@ static bool catalogUpdate(const DomainInfo& di, vector<DNSResourceRecord>& rrs, 
 
   vector<DNSResourceRecord> ret;
 
+  const auto compare = [](DNSResourceRecord a, DNSResourceRecord b) { return a.qname == b.qname ? a.qtype < b.qtype : a.qname.canonCompare(b.qname); };
+  sort(rrs.begin(), rrs.end(), compare);
+
+  DNSName uniq;
   for (auto& rr: rrs) {
     if (di.zone == rr.qname) {
       if (rr.qtype == QType::SOA) {
@@ -439,14 +471,24 @@ static bool catalogUpdate(const DomainInfo& di, vector<DNSResourceRecord>& rrs, 
       suportedSchema = true;
     }
     else if (rr.qname.isPartOf(DNSName("zones") + di.zone)) {
-      DNSName uniq = rr.qname.makeRelative(DNSName("zones") + di.zone);
-      if (uniq.countLabels() == 1 && rr.qtype == QType::PTR) {
+      DNSName rel = rr.qname.makeRelative(DNSName("zones") + di.zone);
+      if (rel.countLabels() == 1 && rr.qtype == QType::PTR) {
+        if (!uniq.empty() && rel != uniq) {
+          fromXFR.insert(ci);
+        }
+        uniq = rel;
+        ci.coo.clear();
         ci.zone = DNSName(rr.content);
         ci.uniq = uniq.toStringNoDot();
-        fromXFR.insert(ci);
+      }
+      else if (rel.countLabels() == 2 && rr.qtype == QType::PTR && rel == (DNSName("coo") + uniq)) {
+        ci.coo = DNSName(rr.content);
       }
     }
     rr.disabled=true;
+  }
+  if (!uniq.empty()) {
+    fromXFR.insert(ci);
   }
 
   if (hasSOA && hasNS && suportedSchema) {

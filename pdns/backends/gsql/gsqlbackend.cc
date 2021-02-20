@@ -658,6 +658,10 @@ bool GSQLBackend::getCatalogSecondary(const string& account, set<CatalogInfo>& z
       if (getDomainMetadata(ci.zone, "CATALOG-UNIQ", tmp) && !tmp.empty()) {
         ci.uniq = std::move(tmp.at(0));
       }
+      tmp.clear();
+      if (getDomainMetadata(ci.zone, "CATALOG-COO", tmp) && !tmp.empty()) {
+        ci.coo = DNSName(tmp.at(0));
+      }
       zones.insert(ci);
     }
     return true;

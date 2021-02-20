@@ -41,6 +41,7 @@ __EOF__
 		fi
 		if [ "$zone" = "stest.com" ]; then
 			$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone $zone 127.0.0.1:$port
+			$PDNSUTIL --config-dir=. --config-name=gmysql2 set-meta $zone CATALOG-COO catalog.invalid
 			if [[ $skipreasons != *nolua* ]]; then
 				$PDNSUTIL --config-dir=. --config-name=gmysql2 set-meta stest.com AXFR-SOURCE 127.0.0.2
 			fi

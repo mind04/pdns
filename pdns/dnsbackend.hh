@@ -108,7 +108,7 @@ struct DomainInfo
 
 struct CatalogInfo
 {
-  DNSName zone;
+  DNSName zone, coo;
   vector<ComboAddress> primaries;
   string account, uniq;
 

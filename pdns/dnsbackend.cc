@@ -337,6 +337,13 @@ bool DNSBackend::getCatalogPrimaryZone(const DNSName& zone, vector<DNSZoneRecord
       dzr.dr.d_type = QType::TXT;
       dzr.dr.d_content = std::make_shared<TXTRecordContent>(std::to_string(d.serial));
       dzrs.push_back(dzr);
+
+      string meta;
+      if (getDomainMetadataOne(d.zone, "CATALOG-COO", meta) && !meta.empty()) {
+        dzr.dr.d_name = DNSName("coo") + dzr.dr.d_name;
+        dzr.dr.d_content =  std::make_shared<PTRRecordContent>(meta);
+        dzrs.push_back(dzr);
+      }
     }
     return true;
   }

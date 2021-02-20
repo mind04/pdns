@@ -38,6 +38,8 @@ __EOF__
 			$PDNSUTIL --config-dir=. --config-name=gmysql load-zone catalog.invalid zones/catalog.invalid
 			$PDNSUTIL --config-dir=. --config-name=gmysql set-kind catalog.invalid catalog-master
 
+			$PDNSUTIL --config-dir=. --config-name=gmysql set-meta test.com CATALOG-COO other-catalog.invalid
+
 			mysql --user="$GMYSQLUSER" --password="$GMYSQLPASSWD" --host="$GMYSQLHOST" "$GMYSQLDB" -e "update domains set account = 'foo'"
 		fi
 
