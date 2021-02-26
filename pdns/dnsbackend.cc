@@ -35,6 +35,7 @@
 #include "statbag.hh"
 #include "dnssecinfra.hh"
 #include "base32.hh"
+#include "dns_random.hh"
 
 extern StatBag S;
 
@@ -311,13 +312,13 @@ bool DNSBackend::getCatalogPrimaryZone(const DNSName& zone, vector<DNSZoneRecord
         dzrs.emplace_back(dzr);
       }
       dzr.dr.d_ttl= 0;
-      dzr.dr.d_name = DNSName("version")+zone;
+      dzr.dr.d_name = DNSName("version") + zone;
       dzr.dr.d_type = QType::TXT;
       dzr.dr.d_content = std::make_shared<TXTRecordContent>("2");
       dzr.auth = true;
       dzrs.push_back(dzr);
 
-      dzr.dr.d_name = DNSName("timestamp")+zone;
+      dzr.dr.d_name = DNSName("timestamp") + zone;
       dzr.dr.d_content = std::make_shared<TXTRecordContent>(std::to_string(time(nullptr)));
       dzrs.push_back(dzr);
     }
@@ -332,23 +333,53 @@ bool DNSBackend::getCatalogPrimaryZone(const DNSName& zone, vector<DNSZoneRecord
     dzr.domain_id = di.id;
 
     for (const auto& d : zones) {
-      dzr.dr.d_name = DNSName(toBase32Hex(hashQNameWithSalt(std::to_string(d.id), 0, d.zone)) + ".zones") + di.zone; // salt with domain id
+      DNSName unique = DNSName(toBase32Hex(hashQNameWithSalt(std::to_string(d.id), 0, d.zone)) + ".zones") + di.zone; // salt with domain id
+
+      dzr.dr.d_name = unique;
       dzr.dr.d_type = QType::PTR;
       dzr.dr.d_content = std::make_shared<PTRRecordContent>(d.zone.toString());
       dzrs.push_back(dzr);
 
-      dzr.dr.d_name = DNSName("serial") + dzr.dr.d_name;
+      dzr.dr.d_name = DNSName("serial") + unique;
       dzr.dr.d_type = QType::TXT;
       dzr.dr.d_content = std::make_shared<TXTRecordContent>(std::to_string(d.serial));
       dzrs.push_back(dzr);
 
+      // FIXME: not very efficient and deal with bad data
       string meta;
       if (getDomainMetadataOne(d.zone, "CATALOG-COO", meta) && !meta.empty()) {
-        dzr.dr.d_name = DNSName("coo") + dzr.dr.d_name;
-        dzr.dr.d_content =  std::make_shared<PTRRecordContent>(meta);
+        dzr.dr.d_name = DNSName("coo") + unique;
+        dzr.dr.d_type = QType::PTR;
+        dzr.dr.d_content = std::make_shared<PTRRecordContent>(meta);
         dzrs.push_back(dzr);
       }
+
+      if(true) { // FIXME: include pdns extensions
+        int sequence = 1;
+        DNSName property = DNSName("pdns-primaries.private-extensions") + unique;
+        for(const auto& master : di.masters) {
+          if (di.masters.size() == 1 ) {
+            dzr.dr.d_name = property;
+          }
+          else {
+            dzr.dr.d_name = DNSName((boost::format("%04x") % sequence++).str()) + property;
+          }
+          dzr.dr.d_type = QType::TXT;
+          dzr.dr.d_content = std::make_shared<TXTRecordContent>('"' + master.toStringWithPortExcept(53) + '"');
+          dzrs.push_back(dzr);
+        }
+
+        // FIXME: not very efficient and deal with bad data
+        if (getDomainMetadataOne(d.zone, "CATALOG-TSIG", meta) && !meta.empty()) {
+          dzr.dr.d_name = DNSName("pdns-tsig") + unique;
+          dzr.dr.d_type = QType::PTR;
+          dzr.dr.d_content = std::make_shared<PTRRecordContent>(meta);
+          dzrs.push_back(dzr);
+        }
+      }
     }
+    // FIXME: make sure nobody is relying on record order (revove before merge and the dns_random.hh include)
+    std::shuffle(dzrs.begin(), dzrs.end(), pdns::dns_random_engine());
     return true;
   }
   return false;
