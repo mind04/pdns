@@ -83,7 +83,7 @@ public:
 
     declare(suffix, "info-zone-query", "", "select id,name,master,last_check,notified_serial,type,account from domains where name=?");
 
-    declare(suffix,"info-all-slaves-query","","select id,name,master,last_check from domains where type='SLAVE' or type='CATALOG-SLAVE'");
+    declare(suffix, "info-all-slaves-query", "", "select id,name,master,last_check from domains where type='SLAVE' or type='CATALOG-SLAVE'");
     declare(suffix, "supermaster-query", "", "select account from supermasters where ip=? and nameserver=?");
     declare(suffix, "supermaster-name-to-ips", "", "select ip,account from supermasters where nameserver=? and account=?");
     declare(suffix, "supermaster-add", "", "insert into supermasters (ip, nameserver, account) values (?,?,?)");
@@ -110,11 +110,11 @@ public:
     declare(suffix, "update-lastcheck-query", "", "update domains set last_check=? where id=?");
     declare(suffix, "info-all-master-query", "", "select domains.id, domains.name, domains.notified_serial, records.content from records join domains on records.name=domains.name where records.type='SOA' and records.disabled=0 and domains.type='MASTER'");
 
-    declare(suffix,"info-all-master-query","", "select domains.id, domains.name, domains.master, domains.notified_serial, domains.account, records.content from records join domains on records.name=domains.name where records.type='SOA' and records.disabled=0 and domains.type='MASTER' order by domains.id");
-    declare(suffix,"info-all-catalog-query","", "select domains.id, domains.name, domains.master, domains.notified_serial, domains.account, records.ttl, records.content from domains join records on records.name=domains.name where records.type='SOA' and records.disabled=0 and domains.type='CATALOG-MASTER'");
+    declare(suffix, "info-all-master-query", "", "select domains.id, domains.name, domains.master, domains.notified_serial, domains.account, records.content from records join domains on records.name=domains.name where records.type='SOA' and records.disabled=0 and domains.type='MASTER' order by domains.id");
+    declare(suffix, "info-all-catalog-query", "", "select domains.id, domains.name, domains.master, domains.notified_serial, domains.account, records.ttl, records.content from domains join records on records.name=domains.name where records.type='SOA' and records.disabled=0 and domains.type='CATALOG-MASTER'");
 
-    declare(suffix,"info-catalog-primary-query","", "select domains.id, domains.name, records.content, records.disabled from records join domains on records.name=domains.name where records.type='SOA' and domains.type='MASTER' and domains.account=?");
-    declare(suffix,"info-catalog-secondary-query","", "select id, name, master from domains where type='SLAVE' and account=?");
+    declare(suffix, "info-catalog-primary-query", "", "select domains.id, domains.name, records.content, records.disabled from records join domains on records.name=domains.name where records.type='SOA' and domains.type='MASTER' and domains.account=?");
+    declare(suffix, "info-catalog-secondary-query", "", "select id, name, master from domains where type='SLAVE' and account=?");
 
     declare(suffix, "delete-domain-query", "", "delete from domains where name=?");
     declare(suffix, "delete-zone-query", "", "delete from records where domain_id=?");

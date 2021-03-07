@@ -186,7 +186,7 @@ public:
   Bind2Backend(const string& suffix = "", bool loadZones = true);
   ~Bind2Backend();
   void getUnfreshSlaveInfos(vector<DomainInfo>* unfreshDomains) override;
-  void getUpdatedMasters(vector<DomainInfo> *changedDomains, map<string, pdns_SHA256>& catalogHashes) override;
+  void getUpdatedMasters(vector<DomainInfo>* changedDomains, map<string, pdns_SHA256>& catalogHashes) override;
   bool getDomainInfo(const DNSName& domain, DomainInfo& di, bool getSerial = true) override;
   time_t getCtime(const string& fname);
   // DNSSEC
