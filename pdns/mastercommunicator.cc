@@ -143,7 +143,9 @@ void CommunicatorClass::masterUpdateCheck(PacketHandler *P)
 
   UeberBackend *B=P->getBackend();
   vector<DomainInfo> cmdomains;
-  B->getUpdatedMasters(&cmdomains);
+  map<string, pdns_SHA1> catalogHashes;
+  B->getUpdatedMasters(&cmdomains, catalogHashes);
+  B->getUpdatedCatalogs(cmdomains, catalogHashes);
   
   if(cmdomains.empty()) {
     if(d_masterschanged)

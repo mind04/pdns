@@ -885,7 +885,7 @@ void RemoteBackend::alsoNotifies(const DNSName& domain, set<string>* ips)
   ips->insert(meta.begin(), meta.end());
 }
 
-void RemoteBackend::getUpdatedMasters(vector<DomainInfo>* domains)
+void RemoteBackend::getUpdatedMasters(vector<DomainInfo>* domains, map<string, pdns_SHA1>& catalogHashes)
 {
   Json query = Json::object{
     {"method", "getUpdatedMasters"},

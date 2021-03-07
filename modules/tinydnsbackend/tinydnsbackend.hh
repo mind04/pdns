@@ -74,7 +74,7 @@ public:
   void getAllDomains(vector<DomainInfo>* domains, bool include_disabled = false) override;
 
   //Master mode operation
-  void getUpdatedMasters(vector<DomainInfo>* domains) override;
+  void getUpdatedMasters(vector<DomainInfo>* domains, map<string, pdns_SHA1>& catalogHashes) override;
   void setNotified(uint32_t id, uint32_t serial) override;
 
 private:

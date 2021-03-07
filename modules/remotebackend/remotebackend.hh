@@ -199,7 +199,7 @@ public:
   bool searchRecords(const string& pattern, int maxResults, vector<DNSResourceRecord>& result) override;
   bool searchComments(const string& pattern, int maxResults, vector<Comment>& result) override;
   void getAllDomains(vector<DomainInfo>* domains, bool include_disabled = false) override;
-  void getUpdatedMasters(vector<DomainInfo>* domains) override;
+  void getUpdatedMasters(vector<DomainInfo>* domains, map<string, pdns_SHA1>& catalogHashes) override;
   void alsoNotifies(const DNSName& domain, set<string>* ips) override;
   void getUnfreshSlaveInfos(vector<DomainInfo>* domains) override;
   void setFresh(uint32_t domain_id) override;

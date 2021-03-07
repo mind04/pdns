@@ -32,6 +32,8 @@
 #include "dnspacket.hh"
 #include "dnsbackend.hh"
 #include "namespaces.hh"
+#include "sha.hh"
+
 
 /** This is a very magic backend that allows us to load modules dynamically,
     and query them in order. This is persistent over all UeberBackend instantiations
@@ -105,7 +107,8 @@ public:
   void getAllDomains(vector<DomainInfo> *domains, bool include_disabled=false);
 
   void getUnfreshSlaveInfos(vector<DomainInfo>* domains);
-  void getUpdatedMasters(vector<DomainInfo>* domains);
+  void getUpdatedMasters(vector<DomainInfo>* domains, map<string, pdns_SHA1>& catalogHashes);
+  void getUpdatedCatalogs(vector<DomainInfo>& domains, map<string, pdns_SHA1>& catalogHashes);
   bool getDomainInfo(const DNSName &domain, DomainInfo &di, bool getSerial=true);
   bool createDomain(const DNSName &domain, const DomainInfo::DomainKind kind, const vector<ComboAddress> &masters, const string &account);
   

@@ -296,11 +296,18 @@ void UeberBackend::getUnfreshSlaveInfos(vector<DomainInfo>* domains)
 
 
 
-void UeberBackend::getUpdatedMasters(vector<DomainInfo>* domains)
+void UeberBackend::getUpdatedMasters(vector<DomainInfo>* domains, map<string, pdns_SHA1>& catalogHashes)
 {
   for (auto & backend : backends)
   {
-    backend->getUpdatedMasters( domains );
+    backend->getUpdatedMasters( domains, catalogHashes );
+  }
+}
+
+void UeberBackend::getUpdatedCatalogs(vector<DomainInfo>& domains, map<string, pdns_SHA1>& catalogHashes)
+{
+  for(DNSBackend* db :  backends) {
+    db->getUpdatedCatalogs(domains, catalogHashes);
   }
 }
 

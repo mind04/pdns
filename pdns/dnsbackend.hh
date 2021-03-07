@@ -35,6 +35,7 @@ class DNSPacket;
 #include <dirent.h>
 #include "misc.hh"
 #include "qtype.hh"
+#include "sha.hh"
 #include "dns.hh"
 #include <vector>
 #include "namespaces.hh"
@@ -327,10 +328,15 @@ public:
   }
 
   //! get list of domains that have been changed since their last notification to slaves
-  virtual void getUpdatedMasters(vector<DomainInfo>* domains)
+  virtual void getUpdatedMasters(vector<DomainInfo>* domains, map<string, pdns_SHA1>& catalogHashes)
   {
   }
   
+  //! get list of catalog zones that have been changed since their last notification to slaves
+  virtual void getUpdatedCatalogs(vector<DomainInfo>& domains, map<string, pdns_SHA1>& catalogHashes)
+  {
+  }
+
   //! get catalog primary zone domains
   virtual bool getCatalogPrimary(const DomainInfo& di, vector<DomainInfo>& zones, bool include_disabled=false)
   {

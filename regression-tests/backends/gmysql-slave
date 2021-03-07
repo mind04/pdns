@@ -31,7 +31,7 @@ __EOF__
 		zones=$((zones+1))
 		if [ "$zone" = "test.com" ]; then
 			mysql --user="$GMYSQL2USER" --password="$GMYSQL2PASSWD" --host="$GMYSQL2HOST" \
-				"$GMYSQL2DB" -e "INSERT INTO domains (name, type, master, account) VALUES('$zone','SLAVE','127.0.0.1:$port', '')"
+				"$GMYSQL2DB" -e "INSERT INTO domains (name, type, master, account) VALUES('$zone','SLAVE','127.0.0.1:$port', 'bar')"
 			$PDNSUTIL --config-dir=. --config-name=gmysql2 set-meta $zone CATALOG-UNIQ ''
 		fi
 		if [ "$zone" = "tsig.com" ]; then
@@ -52,6 +52,7 @@ __EOF__
 	zones=$((zones+1))
 	$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone catalog.invalid 127.0.0.1:$port
 	$PDNSUTIL --config-dir=. --config-name=gmysql2 set-kind catalog.invalid catalog-slave
+	mysql --user="$GMYSQL2USER" --password="$GMYSQL2PASSWD" --host="$GMYSQL2HOST" "$GMYSQL2DB" -e "update domains set account = 'bar' where name='catalog.invalid'"
 
 	$PDNSUTIL --config-dir=. --config-name=gmysql2 create-slave-zone remove.invalid 127.0.0.1:$port
 

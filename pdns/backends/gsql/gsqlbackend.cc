@@ -31,6 +31,7 @@
 #include "pdns/arguments.hh"
 #include "pdns/base32.hh"
 #include "pdns/dnssecinfra.hh"
+#include "dnsseckeeper.hh"
 #include <boost/algorithm/string.hpp>
 #include <sstream>
 #include <boost/format.hpp>
@@ -79,6 +80,7 @@ GSQLBackend::GSQLBackend(const string &mode, const string &suffix)
   d_UpdateLastCheckofZoneQuery=getArg("update-lastcheck-query");
   d_UpdateAccountOfZoneQuery=getArg("update-account-query");
   d_InfoOfAllMasterDomainsQuery=getArg("info-all-master-query");
+  d_InfoOfAllCatalogDomainsQuery=getArg("info-all-catalog-query");
   d_InfoCatalogPrimaryQuery=getArg("info-catalog-primary-query");
   d_InfoCatalogSecondaryQuery=getArg("info-catalog-secondary-query");
   d_DeleteDomainQuery=getArg("delete-domain-query");
@@ -152,6 +154,7 @@ GSQLBackend::GSQLBackend(const string &mode, const string &suffix)
   d_UpdateLastCheckofZoneQuery_stmt = nullptr;
   d_UpdateAccountOfZoneQuery_stmt = nullptr;
   d_InfoOfAllMasterDomainsQuery_stmt = nullptr;
+  d_InfoOfAllCatalogDomainsQuery_stmt = nullptr;
   d_InfoCatalogPrimaryQuery_stmt = nullptr;
   d_InfoCatalogSecondaryQuery_stmt = nullptr;
   d_DeleteDomainQuery_stmt = nullptr;
@@ -437,7 +440,7 @@ void GSQLBackend::getUnfreshSlaveInfos(vector<DomainInfo> *unfreshDomains)
   }
 }
 
-void GSQLBackend::getUpdatedMasters(vector<DomainInfo> *updatedDomains)
+void GSQLBackend::getUpdatedMasters(vector<DomainInfo> *updatedDomains, map<string, pdns_SHA1>& catalogHashes)
 {
   /* list all domains that need notifications for which we are master, and insert into updatedDomains
      id, name, notified_serial, serial */
@@ -460,15 +463,17 @@ void GSQLBackend::getUpdatedMasters(vector<DomainInfo> *updatedDomains)
   di.backend = this;
   di.kind = DomainInfo::Master;
 
-  for( size_t n = 0; n < numanswers; ++n ) { // id, name, notified_serial, content
-    ASSERT_ROW_COLUMNS( "info-all-master-query", d_result[n], 4 );
+  for( size_t n = 0; n < numanswers; ++n ) { // id, name, master, notified_serial, account, content
+    ASSERT_ROW_COLUMNS( "info-all-master-query", d_result[n], 6 );
+
+    catalogHashes[d_result[n][4]].update(d_result[n][0] + d_result[n][1] + d_result[n][2]);
 
     parts.clear();
-    stringtok( parts, d_result[n][3] );
+    stringtok( parts, d_result[n][5] );
 
     try {
       uint32_t serial = parts.size() > 2 ? pdns_stou(parts[2]) : 0;
-      uint32_t notified_serial = pdns_stou( d_result[n][2] );
+      uint32_t notified_serial = pdns_stou( d_result[n][3] );
 
       if( serial != notified_serial ) {
         di.id = pdns_stou( d_result[n][0] );
@@ -479,6 +484,97 @@ void GSQLBackend::getUpdatedMasters(vector<DomainInfo> *updatedDomains)
         updatedDomains->emplace_back(di);
       }
     } catch ( ... ) {
+      continue;
+    }
+  }
+}
+
+void GSQLBackend::getUpdatedCatalogs(vector<DomainInfo>& updatedDomains, map<string, pdns_SHA1>& catalogHashes)
+{
+  try {
+    reconnectIfNeeded();
+
+    d_InfoOfAllCatalogDomainsQuery_stmt->
+      execute()->
+      getResult(d_result)->
+      reset();
+  }
+  catch(SSqlException &e) {
+    throw PDNSException("GSQLBackend::getUpdatedCatalogs() unable to retrieve list of catalog-master domains: "+e.txtReason());
+  }
+
+  size_t numanswers=d_result.size();
+  vector<string>tmp;
+  vector<DNSResourceRecord> rrs;
+  DomainInfo di;
+
+  di.backend = this;
+  di.kind = DomainInfo::Master;
+
+  for( size_t n = 0; n < numanswers; ++n ) { // id, name, master, notified_serial, account, ttl, content
+    ASSERT_ROW_COLUMNS( "info-all-catalog-query", d_result[n], 7 );
+
+    string hash;
+    auto i = catalogHashes.find(d_result[n][4]);
+    if (i != catalogHashes.end()) {
+      hash = toBase32Hex(i->second.hash());
+    }
+
+    try {
+      DNSResourceRecord rr;
+      try {
+        rr.qname = DNSName(d_result[n][1]);
+        rr.qtype = QType::SOA;
+        rr.content = d_result[n][6];
+        rr.ttl = pdns_stou(d_result[n][5]);
+        rr.domain_id = pdns_stou(d_result[n][0]);
+
+        tmp.clear();
+        if (getDomainMetadata(rr.qname, "CATALOG-HASH", tmp) && !tmp.empty() && hash == *tmp.begin()) {
+          continue;
+        }
+
+        startTransaction(rr.qname, -1);
+
+        tmp.clear();
+        tmp.push_back(hash);
+        setDomainMetadata(rr.qname, "CATALOG-HASH", tmp);
+
+
+        increaseSOARecord(rr, "EPOCH", "");
+
+        rrs.clear();
+        rrs.push_back(rr);
+        replaceRRSet(rr.domain_id, rr.qname, rr.qtype, rrs);
+
+        commitTransaction();
+
+        g_log<<Logger::Error<<"GSQLBackend::getUpdatedCatalogs() catalog zone '"<<d_result[n][1]<<"' was updated"<<endl;
+      }
+      catch(SSqlException &e) {
+        try {
+          abortTransaction();
+         }
+        catch (...) {}
+        throw PDNSException("GSQLBackend::getUpdatedCatalogs() unable to update catalog zone '"+d_result[n][1]+"':"+e.txtReason());
+      }
+
+      auto soa = std::make_shared<SOARecordContent>(rr.content);
+      uint32_t notified_serial = pdns_stou( d_result[n][3] );
+
+      if ( soa->d_st.serial != notified_serial ) {
+        di.id = rr.domain_id;
+        di.zone = rr.qname;
+        di.serial = soa->d_st.serial;
+        di.notified_serial = notified_serial;
+
+        updatedDomains.emplace_back(di);
+      }
+    }
+    catch (PDNSException &ex) {
+    }
+    catch (...) {
+      g_log<<Logger::Error<<"GSQLBackend::getUpdatedCatalogs() Someting went wrong for catalog zone '"<<d_result[n][1]<<"', skipping"<<endl;
       continue;
     }
   }

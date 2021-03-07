@@ -29,11 +29,12 @@ __EOF__
 
 
 		# setup catalog zone
-		mysql --user="$GMYSQLUSER" --password="$GMYSQLPASSWD" --host="$GMYSQLHOST" "$GMYSQLDB" -e "update domains set type = 'MASTER', account = '';"
+		mysql --user="$GMYSQLUSER" --password="$GMYSQLPASSWD" --host="$GMYSQLHOST" "$GMYSQLDB" -e "update domains set type = 'MASTER'"
 
 		$PDNSUTIL --config-dir=. --config-name=gmysql load-zone catalog.invalid zones/catalog.invalid
 		$PDNSUTIL --config-dir=. --config-name=gmysql set-kind catalog.invalid catalog-master
 
+		mysql --user="$GMYSQLUSER" --password="$GMYSQLPASSWD" --host="$GMYSQLHOST" "$GMYSQLDB" -e "update domains set account = 'foo'"
 
 		gsql_master gmysql dyndns
 		;;

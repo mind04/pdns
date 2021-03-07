@@ -76,6 +76,7 @@ protected:
       d_UpdateSerialOfZoneQuery_stmt = d_db->prepare(d_UpdateSerialOfZoneQuery, 2);
       d_UpdateLastCheckofZoneQuery_stmt = d_db->prepare(d_UpdateLastCheckofZoneQuery, 2);
       d_InfoOfAllMasterDomainsQuery_stmt = d_db->prepare(d_InfoOfAllMasterDomainsQuery, 0);
+      d_InfoOfAllCatalogDomainsQuery_stmt = d_db->prepare(d_InfoOfAllCatalogDomainsQuery, 0);
       d_InfoCatalogPrimaryQuery_stmt = d_db->prepare(d_InfoCatalogPrimaryQuery, 1);
       d_InfoCatalogSecondaryQuery_stmt = d_db->prepare(d_InfoCatalogSecondaryQuery, 1);
       d_DeleteDomainQuery_stmt = d_db->prepare(d_DeleteDomainQuery, 1);
@@ -142,6 +143,7 @@ protected:
     d_UpdateSerialOfZoneQuery_stmt.reset();
     d_UpdateLastCheckofZoneQuery_stmt.reset();
     d_InfoOfAllMasterDomainsQuery_stmt.reset();
+    d_InfoOfAllCatalogDomainsQuery_stmt.reset();
     d_InfoCatalogPrimaryQuery_stmt.reset();
     d_InfoCatalogSecondaryQuery_stmt.reset();
     d_DeleteDomainQuery_stmt.reset();
@@ -204,7 +206,8 @@ public:
   bool superMasterBackend(const string &ip, const DNSName &domain, const vector<DNSResourceRecord>&nsset, string *nameserver, string *account, DNSBackend **db) override;
   void setFresh(uint32_t domain_id) override;
   void getUnfreshSlaveInfos(vector<DomainInfo> *domains) override;
-  void getUpdatedMasters(vector<DomainInfo> *updatedDomains) override;
+  void getUpdatedMasters(vector<DomainInfo> *updatedDomains, map<string, pdns_SHA1>& catalogHashes) override;
+  void getUpdatedCatalogs(vector<DomainInfo>& updatedDomains, map<string, pdns_SHA1>& catalogHashes) override;
   bool getCatalogPrimary(const DomainInfo& di, vector<DomainInfo>& zones, bool include_disabled=false) override;
   bool getCatalogSecondary(const string& account, set<CatalogInfo>& zones) override;
   bool getDomainInfo(const DNSName &domain, DomainInfo &di, bool getSerial=true) override;
@@ -302,6 +305,7 @@ private:
   string d_UpdateSerialOfZoneQuery;
   string d_UpdateLastCheckofZoneQuery;
   string d_InfoOfAllMasterDomainsQuery;
+  string d_InfoOfAllCatalogDomainsQuery;
   string d_InfoCatalogPrimaryQuery;
   string d_InfoCatalogSecondaryQuery;
   string d_DeleteDomainQuery;
@@ -375,6 +379,7 @@ private:
   unique_ptr<SSqlStatement> d_UpdateSerialOfZoneQuery_stmt;
   unique_ptr<SSqlStatement> d_UpdateLastCheckofZoneQuery_stmt;
   unique_ptr<SSqlStatement> d_InfoOfAllMasterDomainsQuery_stmt;
+  unique_ptr<SSqlStatement> d_InfoOfAllCatalogDomainsQuery_stmt;
   unique_ptr<SSqlStatement> d_InfoCatalogPrimaryQuery_stmt;
   unique_ptr<SSqlStatement> d_InfoCatalogSecondaryQuery_stmt;
   unique_ptr<SSqlStatement> d_DeleteDomainQuery_stmt;
