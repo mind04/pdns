@@ -328,12 +328,12 @@ public:
   }
 
   //! get list of domains that have been changed since their last notification to slaves
-  virtual void getUpdatedMasters(vector<DomainInfo>* domains, map<string, pdns_SHA1>& catalogHashes)
+  virtual void getUpdatedMasters(vector<DomainInfo>* domains, map<string, pdns_SHA256>& catalogHashes)
   {
   }
   
   //! get list of catalog zones that have been changed since their last notification to slaves
-  virtual void getUpdatedCatalogs(vector<DomainInfo>& domains, map<string, pdns_SHA1>& catalogHashes)
+  virtual void getUpdatedCatalogs(vector<DomainInfo>& domains, map<string, pdns_SHA256>& catalogHashes)
   {
   }
 

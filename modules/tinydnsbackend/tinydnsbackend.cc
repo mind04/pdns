@@ -89,8 +89,7 @@ TinyDNSBackend::TinyDNSBackend(const string& suffix)
   d_isWildcardQuery = false;
 }
 
-void TinyDNSBackend::getUpdatedMasters(vector<DomainInfo>* retDomains, map<string, pdns_SHA1>& catalogHashes)
-{
+void TinyDNSBackend::getUpdatedMasters(vector<DomainInfo>* retDomains, map<string, pdns_SHA256>& catalogHashes) {
   std::lock_guard<std::mutex> l(s_domainInfoLock); //TODO: We could actually lock less if we do it per suffix.
 
   if (!s_domainInfo.count(d_suffix)) {

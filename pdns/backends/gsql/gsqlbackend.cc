@@ -440,7 +440,7 @@ void GSQLBackend::getUnfreshSlaveInfos(vector<DomainInfo> *unfreshDomains)
   }
 }
 
-void GSQLBackend::getUpdatedMasters(vector<DomainInfo> *updatedDomains, map<string, pdns_SHA1>& catalogHashes)
+void GSQLBackend::getUpdatedMasters(vector<DomainInfo> *updatedDomains, map<string, pdns_SHA256>& catalogHashes)
 {
   /* list all domains that need notifications for which we are master, and insert into updatedDomains
      id, name, notified_serial, serial */
@@ -489,7 +489,7 @@ void GSQLBackend::getUpdatedMasters(vector<DomainInfo> *updatedDomains, map<stri
   }
 }
 
-void GSQLBackend::getUpdatedCatalogs(vector<DomainInfo>& updatedDomains, map<string, pdns_SHA1>& catalogHashes)
+void GSQLBackend::getUpdatedCatalogs(vector<DomainInfo>& updatedDomains, map<string, pdns_SHA256>& catalogHashes)
 {
   try {
     reconnectIfNeeded();

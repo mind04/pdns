@@ -24,7 +24,7 @@
 #include "ldapbackend.hh"
 #include <cstdlib>
 
-void LdapBackend::getUpdatedMasters( vector<DomainInfo>* domains, map<string, pdns_SHA1>& catalogHashes )
+void LdapBackend::getUpdatedMasters( vector<DomainInfo>* domains, map<string, pdns_SHA256>& catalogHashes )
 {
   string filter;
   PowerLDAP::SearchResult::Ptr search;

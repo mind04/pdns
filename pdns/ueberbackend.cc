@@ -296,7 +296,7 @@ void UeberBackend::getUnfreshSlaveInfos(vector<DomainInfo>* domains)
 
 
 
-void UeberBackend::getUpdatedMasters(vector<DomainInfo>* domains, map<string, pdns_SHA1>& catalogHashes)
+void UeberBackend::getUpdatedMasters(vector<DomainInfo>* domains, map<string, pdns_SHA256>& catalogHashes)
 {
   for (auto & backend : backends)
   {
@@ -304,7 +304,7 @@ void UeberBackend::getUpdatedMasters(vector<DomainInfo>* domains, map<string, pd
   }
 }
 
-void UeberBackend::getUpdatedCatalogs(vector<DomainInfo>& domains, map<string, pdns_SHA1>& catalogHashes)
+void UeberBackend::getUpdatedCatalogs(vector<DomainInfo>& domains, map<string, pdns_SHA256>& catalogHashes)
 {
   for(DNSBackend* db :  backends) {
     db->getUpdatedCatalogs(domains, catalogHashes);

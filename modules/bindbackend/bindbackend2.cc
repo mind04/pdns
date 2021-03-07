@@ -310,7 +310,7 @@ bool Bind2Backend::feedRecord(const DNSResourceRecord& rr, const DNSName& ordern
   return true;
 }
 
-void Bind2Backend::getUpdatedMasters(vector<DomainInfo> *changedDomains, map<string, pdns_SHA1>& catalogHashes)
+void Bind2Backend::getUpdatedMasters(vector<DomainInfo> *changedDomains, map<string, pdns_SHA256>& catalogHashes)
 {
   vector<DomainInfo> consider;
   {

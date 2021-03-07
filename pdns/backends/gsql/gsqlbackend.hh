@@ -206,8 +206,8 @@ public:
   bool superMasterBackend(const string &ip, const DNSName &domain, const vector<DNSResourceRecord>&nsset, string *nameserver, string *account, DNSBackend **db) override;
   void setFresh(uint32_t domain_id) override;
   void getUnfreshSlaveInfos(vector<DomainInfo> *domains) override;
-  void getUpdatedMasters(vector<DomainInfo> *updatedDomains, map<string, pdns_SHA1>& catalogHashes) override;
-  void getUpdatedCatalogs(vector<DomainInfo>& updatedDomains, map<string, pdns_SHA1>& catalogHashes) override;
+  void getUpdatedMasters(vector<DomainInfo> *updatedDomains, map<string, pdns_SHA256>& catalogHashes) override;
+  void getUpdatedCatalogs(vector<DomainInfo>& updatedDomains, map<string, pdns_SHA256>& catalogHashes) override;
   bool getCatalogPrimary(const DomainInfo& di, vector<DomainInfo>& zones, bool include_disabled=false) override;
   bool getCatalogSecondary(const string& account, set<CatalogInfo>& zones) override;
   bool getDomainInfo(const DNSName &domain, DomainInfo &di, bool getSerial=true) override;

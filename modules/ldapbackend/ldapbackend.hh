@@ -177,6 +177,6 @@ public:
   bool getDomainInfo(const DNSName& domain, DomainInfo& di, bool getSerial = true) override;
 
   // Master backend
-    void getUpdatedMasters( vector<DomainInfo>* domains, map<string, pdns_SHA1>& catalogHashes ) override;
+    void getUpdatedMasters( vector<DomainInfo>* domains, map<string, pdns_SHA256>& catalogHashes ) override;
   void setNotified(uint32_t id, uint32_t serial) override;
 };

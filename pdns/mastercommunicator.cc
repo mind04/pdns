@@ -143,7 +143,7 @@ void CommunicatorClass::masterUpdateCheck(PacketHandler *P)
 
   UeberBackend *B=P->getBackend();
   vector<DomainInfo> cmdomains;
-  map<string, pdns_SHA1> catalogHashes;
+  map<string, pdns_SHA256> catalogHashes;
   B->getUpdatedMasters(&cmdomains, catalogHashes);
   B->getUpdatedCatalogs(cmdomains, catalogHashes);
   
