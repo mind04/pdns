@@ -345,6 +345,11 @@ bool DNSBackend::getCatalogPrimaryZone(const DNSName& zone, vector<DNSZoneRecord
       dzr.dr.d_content = std::make_shared<TXTRecordContent>(std::to_string(d.serial));
       dzrs.push_back(dzr);
 
+      dzr.dr.d_name = DNSName("group") + unique;
+      dzr.dr.d_type = QType::TXT;
+      dzr.dr.d_content = std::make_shared<TXTRecordContent>(di.account);
+      dzrs.push_back(dzr);
+
       // FIXME: not very efficient and deal with bad data
       string meta;
       if (getDomainMetadataOne(d.zone, "CATALOG-COO", meta) && !meta.empty()) {
