@@ -341,8 +341,8 @@ bool DNSBackend::getCatalogPrimaryZone(const DNSName& zone, vector<DNSZoneRecord
       dzrs.push_back(dzr);
 
       dzr.dr.d_name = DNSName("serial") + unique;
-      dzr.dr.d_type = QType::TXT;
-      dzr.dr.d_content = std::make_shared<TXTRecordContent>(std::to_string(d.serial));
+      dzr.dr.d_type = QType::CSYNC;
+      dzr.dr.d_content = std::make_shared<CSYNCRecordContent>(std::to_string(d.serial) + " 0");
       dzrs.push_back(dzr);
 
       dzr.dr.d_name = DNSName("group") + unique;
