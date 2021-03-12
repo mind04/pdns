@@ -41,6 +41,8 @@ __EOF__
 			$PDNSUTIL --config-dir=. --config-name=gmysql set-meta test.com CATALOG-COO other-catalog.invalid
 
 			mysql --user="$GMYSQLUSER" --password="$GMYSQLPASSWD" --host="$GMYSQLHOST" "$GMYSQLDB" -e "update domains set account = 'foo'"
+
+			mysql --user="$GMYSQLUSER" --password="$GMYSQLPASSWD" --host="$GMYSQLHOST" "$GMYSQLDB" -e "update domains set master = '127.0.0.1:5200'"
 		fi
 
 		gsql_master gmysql dyndns
